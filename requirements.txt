@@ -1,0 +1,17 @@
+altgraph==0.17.2
+auto-py-to-exe==2.10.1
+bottle==0.12.19
+bottle-websocket==0.2.9
+Eel==0.12.4
+future==0.18.2
+gevent==21.8.0
+gevent-websocket==0.10.1
+greenlet==1.1.2
+pyinstaller==4.6
+pyinstaller-hooks-contrib==2021.3
+PyQt5==5.15.6
+PyQt5-Qt5==5.15.2
+PyQt5-sip==12.9.0
+whichcraft==0.6.1
+zope.event==4.5.0
+zope.interface==5.4.0

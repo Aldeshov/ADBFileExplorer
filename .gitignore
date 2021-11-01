@@ -1,0 +1,10 @@
+# Python caches
+__pycache__
+
+# Virtual Environment
+/venv
+
+# Compiled Files
+/output
+/dist
+/build

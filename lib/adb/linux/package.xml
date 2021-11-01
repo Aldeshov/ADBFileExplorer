@@ -1,0 +1,18 @@
+<ns2:repository xmlns:ns2="http://schemas.android.com/repository/android/common/01"
+                xmlns:ns3="http://schemas.android.com/sdk/android/repo/addon2/01"
+                xmlns:ns4="http://schemas.android.com/sdk/android/repo/sys-img2/01"
+                xmlns:ns5="http://schemas.android.com/repository/android/generic/01"
+                xmlns:ns6="http://schemas.android.com/sdk/android/repo/repository2/01">
+  <license id="apache-2.0" type="text">Please refer to Apache v2.0 license</license>
+  <localPackage path="platform-tools" obsolete="false">
+    <type-details xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:type="ns5:genericDetailsType"/>
+    <revision>
+      <major>27</major>
+      <minor>0</minor>
+      <micro>0</micro>
+    </revision>
+    <display-name>Android SDK Platform-Tools</display-name>
+    <uses-license ref="apache-2.0"/>
+  </localPackage>
+</ns2:repository>
