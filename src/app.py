@@ -7,8 +7,14 @@ from ui import MainWindow
 
 DEVICE_ID = '192.168.8.1'
 
-
 if __name__ == '__main__':
+    validation = adb.validate()
+    message = "adb not found!\nPlease check 'bin' folder or replace necessary adb files to 'bin/'"
+    assert validation, message
+
+    adb.start_server()
+    adb.connect(DEVICE_ID)
+
     app = QApplication(sys.argv)
     app.setStyleSheet(
         '''
@@ -17,9 +23,6 @@ if __name__ == '__main__':
         QWidget#file:pressed {}
         '''
     )
-
-    adb.start_server()
-    adb.connect(DEVICE_ID)
 
     window = MainWindow()
     window.show()

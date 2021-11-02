@@ -4,8 +4,8 @@ from services.system import self
 
 
 class ADBPath:
-    Linux = 'lib/adb/linux/adb'
-    Windows = 'lib\\adb\\win\\adb.exe'
+    Linux = 'bin/adb'
+    Windows = 'bin\\adb.exe'
 
 
 def adb_path():

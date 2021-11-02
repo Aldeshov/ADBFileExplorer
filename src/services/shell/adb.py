@@ -1,5 +1,3 @@
-import subprocess
-
 from services import config
 from services.system import process
 
@@ -14,38 +12,25 @@ class Commands:
 
 
 def validate():
-    try:
-        return 0 <= subprocess.Popen(Commands.ADB, stdout=subprocess.PIPE).wait() <= 1
-    except FileNotFoundError:
-        return False
+    return process.call(Commands.VERSION)
 
 
 @property
 def version():
-    if validate():
-        return process.run(Commands.VERSION)
-    return False
+    return process.run(Commands.VERSION)
 
 
 def start_server():
-    if validate():
-        return process.run(Commands.START_SERVER)
-    return False
+    return process.run(Commands.START_SERVER)
 
 
 def kill_server():
-    if validate():
-        return process.run(Commands.KILL_SERVER)
-    return False
+    return process.run(Commands.KILL_SERVER)
 
 
 def connect(device_id: str):
-    if validate():
-        return process.run(Commands.CONNECT + [f"{device_id}"])
-    return False
+    return process.run(Commands.CONNECT + [f"{device_id}"])
 
 
 def shell(args: []):
-    if validate():
-        return process.run(Commands.SHELL + args)
-    return False
+    return process.run(Commands.SHELL + args)
