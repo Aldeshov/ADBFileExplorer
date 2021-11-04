@@ -17,7 +17,6 @@
       <list>
         <option value="$MODULE_DIR$/src/services" />
         <option value="$MODULE_DIR$/src/services/shell" />
-        <option value="$MODULE_DIR$/src/services/system" />
       </list>
     </option>
   </component>

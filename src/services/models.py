@@ -15,6 +15,7 @@ file_types = (
     ('c', 'Character'),
     ('b', 'Block'),
     ('s', 'Socket'),
+    ('p', 'FIFO')
 )
 
 months = (
@@ -44,21 +45,30 @@ days = (
 )
 
 
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
 class File:
     def __init__(self, **kwargs):
-        self.name = kwargs.get("name")
-        self._path = kwargs.get("path")
-        self.permissions = kwargs.get("permissions")
-        self.owner = kwargs.get("owner")
-        self.group = kwargs.get("group")
-        self.other = kwargs.get("other")
+        self.name: str = kwargs.get("name")
+        self._path: str = kwargs.get("path")
+        self.permissions: str = kwargs.get("permissions")
+        self.owner: str = kwargs.get("owner")
+        self.group: str = kwargs.get("group")
+        self.other: str = kwargs.get("other")
 
-        self._date = datetime.datetime.strptime(kwargs.get("date"), "%Y-%m-%d %H:%M")
+        self._date: datetime.datetime = kwargs.get("date_time")
 
-        self._link = kwargs.get("link")
-        self._link_type = kwargs.get("link_type")
+        self._link: str = kwargs.get("link")
+        self._link_type: str = kwargs.get("link_type")
 
-        self._size = int(kwargs.get("size"))
+        self._size: int = kwargs.get("size")
 
     def __str__(self):
         return f"{self.name} at {self._path}"
@@ -88,9 +98,9 @@ class File:
         elif created.day + 1 < now.day:
             return f"{days[created.weekday()][1]} at {created.hour}:{created.minute}"
         elif created.day < now.day:
-            return f"Yesterday at {created.hour}:{created.minute}"
+            return f"Yesterday at {str(created.time())[:-3]}"
         else:
-            return f"{created.hour}:{created.minute}"
+            return f"{str(created.time())[:-3]}"
 
     @property
     def link(self):
@@ -107,6 +117,10 @@ class File:
                 return ft[1]
         return 'Unknown'
 
+    @property
+    def date_raw(self):
+        return str(self._date)
+
 
 class FileTypes:
     FILE = 'File'
@@ -116,3 +130,10 @@ class FileTypes:
     BLOCK = 'Block'
     SOCKET = 'Socket'
     UNKNOWN = 'Unknown'
+
+
+class Device:
+    def __init__(self, **kwargs):
+        self.id: str = kwargs.get("id")
+        self.name: str = kwargs.get("name")
+        self.type: str = kwargs.get("type")

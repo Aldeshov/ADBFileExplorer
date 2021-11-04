@@ -1,36 +1,56 @@
-from services import config
-from services.system import process
+from services.filesystem import process, config
+from services.shell import ls
+
+ADB = config.ADB.path()
 
 
-class Commands:
-    ADB = [f"{config.adb_path()}"]
-    SHELL = [f"{config.adb_path()}", "shell"]  # + ARGUMENTS
-    CONNECT = [f"{config.adb_path()}", "connect"]  # + DEVICE_ID
-    VERSION = [f"{config.adb_path()}", "--version"]
-    START_SERVER = [f"{config.adb_path()}", "start-server"]
-    KILL_SERVER = [f"{config.adb_path()}", "kill-server"]
+class Parameter:
+    DEVICE = "-s"
+    SHELL = "shell"
+    CONNECT = "connect"
+    VERSION = "--version"
+    DEVICES = "devices"
+    START_SERVER = "start-server"
+    KILL_SERVER = "kill-server"
 
 
 def validate():
-    return process.call(Commands.VERSION)
+    command = [ADB, Parameter.VERSION]
+    validation = process.call(command)
+    message = "adb not found!\nPlease check 'bin' folder or replace necessary adb files to 'bin/'"
+    assert validation, message
 
 
-@property
 def version():
-    return process.run(Commands.VERSION)
+    command = [ADB, Parameter.VERSION]
+    return process.run(command)
+
+
+def devices():
+    command = [ADB, Parameter.DEVICES]
+    return process.run(command)
 
 
 def start_server():
-    return process.run(Commands.START_SERVER)
+    command = [ADB, Parameter.START_SERVER]
+    return process.run(command)
 
 
 def kill_server():
-    return process.run(Commands.KILL_SERVER)
+    command = [ADB, Parameter.KILL_SERVER]
+    return process.run(command)
 
 
 def connect(device_id: str):
-    return process.run(Commands.CONNECT + [f"{device_id}"])
+    command = [ADB, Parameter.CONNECT, device_id]
+    return process.run(command)
 
 
-def shell(args: []):
-    return process.run(Commands.SHELL + args)
+def shell(device_id: str, args: []):
+    command = [ADB, Parameter.DEVICE, device_id, Parameter.SHELL] + args
+    return process.run(command)
+
+
+def file_list(device_id: str, path: str):
+    command = [ADB, Parameter.DEVICE, device_id, ls.LS, path]
+    return process.run(command)
