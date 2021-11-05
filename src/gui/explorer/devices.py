@@ -4,7 +4,7 @@ from gui.abstract.base import BaseListWidget, BaseListItemWidget, BaseListHeader
 from services.drivers import get_devices
 from services.filesystem.config import Asset
 from services.manager import FileManager
-from services.models import Device
+from services.models import Device, Single
 
 
 class DeviceHeaderWidget(BaseListHeaderWidget):
@@ -17,9 +17,8 @@ class DeviceHeaderWidget(BaseListHeaderWidget):
 
 
 class DeviceListWidget(BaseListWidget):
-    def __init__(self, parent):
+    def __init__(self):
         super().__init__()
-        self.explorer = parent
         self.devices_widgets()
 
     def devices_widgets(self):
@@ -32,10 +31,6 @@ class DeviceListWidget(BaseListWidget):
                 item = DeviceItemWidget(device)
                 widgets.append(item)
             self.load(widgets)
-
-    def update(self):
-        super(DeviceListWidget, self).update()
-        self.explorer.files()
 
 
 class DeviceItemWidget(BaseListItemWidget):
@@ -55,4 +50,4 @@ class DeviceItemWidget(BaseListItemWidget):
 
         if event.button() == Qt.LeftButton:
             FileManager.set_device(self.device.id)
-            self.parent().update()
+            Single().communicate.files.emit()

@@ -1,5 +1,8 @@
 import datetime
 
+from PyQt5 import QtCore
+from PyQt5.QtCore import QObject
+
 size_types = (
     ('BYTE', 'B'),
     ('KILOBYTE', 'KB'),
@@ -137,3 +140,20 @@ class Device:
         self.id: str = kwargs.get("id")
         self.name: str = kwargs.get("name")
         self.type: str = kwargs.get("type")
+
+
+class Communicate(QObject):
+    files = QtCore.pyqtSignal()
+    devices = QtCore.pyqtSignal()
+
+    up = QtCore.pyqtSignal()
+    refresh = QtCore.pyqtSignal()
+
+
+class Single(object):
+    communicate = Communicate()
+
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Single, cls).__new__(cls)
+        return cls.instance

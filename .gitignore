@@ -8,3 +8,7 @@ __pycache__
 /output
 /dist
 /build
+app.spec
+
+# Log file
+console.log

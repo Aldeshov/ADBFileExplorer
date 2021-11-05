@@ -92,12 +92,12 @@ class FileItemWidget(BaseListItemWidget):
         elif self.file.type == FileTypes.FILE:
             return Asset.icon_file
         elif self.file.type == FileTypes.LINK:
-            if self.file.link_type == FileTypes.DIRECTORY:
-                return Asset.icon_link_folder
-            elif self.file.link_type == FileTypes.FILE:
-                return Asset.icon_link_file
-            else:
-                return Asset.icon_link_file_unknown
+            return Asset.icon_link_file_universal
+            # if self.file.link_type == FileTypes.DIRECTORY:
+            #     return Asset.icon_link_folder
+            # elif self.file.link_type == FileTypes.FILE:
+            #     return Asset.icon_link_file
+            # return Asset.icon_link_file_unknown
         return Asset.icon_file_unknown
 
     def mouseReleaseEvent(self, event):
@@ -110,15 +110,16 @@ class FileItemWidget(BaseListItemWidget):
     def context_menu(self, pos: QPoint):
         global_pos = self.mapToGlobal(pos)
 
-        menu = QMenu()
         action_properties = QAction('Properties', self)
         action_properties.triggered.connect(self.file_properties)
+
         action_copy = QAction('Copy', self)
         action_move = QAction('Move', self)
         action_delete = QAction('Delete', self)
         action_rename = QAction('Rename', self)
         action_download = QAction('Download to', self)
 
+        menu = QMenu()
         menu.addSection("Actions")
         menu.addAction(action_copy)
         menu.addAction(action_move)

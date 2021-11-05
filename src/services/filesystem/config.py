@@ -21,9 +21,10 @@ class ADB:
 
 
 class Asset:
-    logo = 'assets/logo.ico'
+    logo = 'assets/logo.png'
 
     icon_exit = 'assets/icons/exit.png'
+    icon_connect = 'assets/icons/connect.png'
     icon_unknown = 'assets/icons/unknown.png'
     icon_phone = 'assets/icons/phone.png'
     icon_plus = 'assets/icons/plus.png'
@@ -33,5 +34,6 @@ class Asset:
     icon_file_unknown = 'assets/icons/files/file_unknown.png'
     icon_folder = 'assets/icons/files/folder.png'
     icon_link_file = 'assets/icons/files/link_file.png'
-    icon_link_file_unknown = 'assets/icons/files/link_file_unknown.png'
     icon_link_folder = 'assets/icons/files/link_folder.png'
+    icon_link_file_unknown = 'assets/icons/files/link_file_unknown.png'
+    icon_link_file_universal = 'assets/icons/files/link_file_universal.png'
