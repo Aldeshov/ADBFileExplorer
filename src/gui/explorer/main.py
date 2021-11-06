@@ -6,7 +6,7 @@ from gui.explorer.devices import DeviceHeaderWidget, DeviceListWidget
 from gui.explorer.files import FileHeaderWidget, FileListWidget
 from services.filesystem.config import Asset
 from services.manager import FileManager
-from services.models import Single
+from services.models import Global
 
 
 class FileExplorerToolbar(QToolBar):
@@ -37,7 +37,7 @@ class FileExplorerToolbar(QToolBar):
     @staticmethod
     def __action_go_to_parent():
         if FileManager.up():
-            Single().communicate.refresh.emit()
+            Global().communicate.refresh.emit()
 
 
 class Explorer(QWidget):
@@ -55,8 +55,8 @@ class Explorer(QWidget):
         self.scroll.setWidgetResizable(True)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        Single().communicate.files.connect(self.files)
-        Single().communicate.devices.connect(self.devices)
+        Global().communicate.files.connect(self.files)
+        Global().communicate.devices.connect(self.devices)
 
     def files(self):
         self.clear()
@@ -69,10 +69,11 @@ class Explorer(QWidget):
         self.layout.addWidget(self.header)
         self.layout.addWidget(self.scroll)
 
-        Single().communicate.refresh.connect(self.scroll.widget().update)
+        Global().communicate.refresh.connect(self.scroll.widget().update)
 
     def devices(self):
         self.clear()
+        FileManager.clear_device()
         self.header = DeviceHeaderWidget()
         self.header.setMaximumHeight(24)
         self.body = DeviceListWidget()

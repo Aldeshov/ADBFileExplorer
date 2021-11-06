@@ -4,7 +4,7 @@ from gui.abstract.base import BaseListWidget, BaseListItemWidget, BaseListHeader
 from services.drivers import get_devices
 from services.filesystem.config import Asset
 from services.manager import FileManager
-from services.models import Device, Single
+from services.models import Device, Global
 
 
 class DeviceHeaderWidget(BaseListHeaderWidget):
@@ -48,6 +48,6 @@ class DeviceItemWidget(BaseListItemWidget):
     def mouseReleaseEvent(self, event):
         super(DeviceItemWidget, self).mouseReleaseEvent(event)
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.LeftButton and self.device.type == 'device':
             FileManager.set_device(self.device.id)
-            Single().communicate.files.emit()
+            Global().communicate.files.emit()

@@ -8,18 +8,21 @@ from services.shell import ls, adb, properties
 def get_devices():
     devices = []
     data = adb.devices()
-    lines = data.split('\n')
-    lines.remove(lines[0])
+    if not data:
+        return devices
+
+    lines = data.split()
+    lines = lines[4:]  # Removing 'List of attached devices'
     if not lines:
         return devices
 
-    for line in lines:
-        if line:
-            fields = line.split()
-            device_id = fields[0]
-            name = adb.shell(device_id, [properties.GET_PROPERTY, properties.Parameter.PRODUCT_MODEL]).strip()
-            device = Device(id=device_id, name=name or 'Unknown Device', type=fields[1])
-            devices.append(device)
+    i = 0
+    while i < len(lines):
+        device_id = lines[i]
+        name = adb.shell(device_id, [properties.GET_PROPERTY, properties.Parameter.PRODUCT_MODEL]).strip()
+        device = Device(id=device_id, name=name or 'Unknown Device', type=lines[i + 1])
+        devices.append(device)
+        i += 2
     return devices
 
 
@@ -47,7 +50,7 @@ def get_files(device_id, path):
 # drwxrwxrwx root     root              1970-01-01 00:00 bin
 # -rwxr-x--- root     root        94168 1970-01-01 00:00 init
 #                           etc...
-def adb_shell_ls_getter_ver_1(device_id, path):
+def adb_shell_ls_getter_variant_1(device_id, path):
     files = []
 
     # Getting data from device

@@ -9,6 +9,3 @@ __pycache__
 /dist
 /build
 app.spec
-
-# Log file
-console.log

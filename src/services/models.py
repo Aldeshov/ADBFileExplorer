@@ -122,7 +122,7 @@ class File:
 
     @property
     def date_raw(self):
-        return str(self._date)
+        return str(self._date)[:-3]
 
 
 class FileTypes:
@@ -150,10 +150,10 @@ class Communicate(QObject):
     refresh = QtCore.pyqtSignal()
 
 
-class Single(object):
+class Global(object):
     communicate = Communicate()
 
     def __new__(cls):
         if not hasattr(cls, 'instance'):
-            cls.instance = super(Single, cls).__new__(cls)
+            cls.instance = super(Global, cls).__new__(cls)
         return cls.instance

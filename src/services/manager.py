@@ -21,6 +21,8 @@ class FileManager:
 
     @classmethod
     def open(cls, file: File):
+        if not cls.__DEVICE:
+            return False
         if file.type == FileTypes.DIRECTORY:
             cls.__PATH.append(file.name)
             return True

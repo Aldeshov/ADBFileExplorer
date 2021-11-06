@@ -1,5 +1,7 @@
 import platform
 
+VERSION = '0.20'
+
 
 class OS:
     Linux = 'Linux'
@@ -31,8 +33,8 @@ class Asset:
     icon_up = 'assets/icons/up.png'
 
     icon_file = 'assets/icons/files/file.png'
-    icon_file_unknown = 'assets/icons/files/file_unknown.png'
     icon_folder = 'assets/icons/files/folder.png'
+    icon_file_unknown = 'assets/icons/files/file_unknown.png'
     icon_link_file = 'assets/icons/files/link_file.png'
     icon_link_folder = 'assets/icons/files/link_folder.png'
     icon_link_file_unknown = 'assets/icons/files/link_file_unknown.png'

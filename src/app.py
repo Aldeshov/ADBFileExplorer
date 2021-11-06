@@ -6,9 +6,6 @@ from gui.window import MainWindow
 from services.shell import adb
 
 if __name__ == '__main__':
-    # Setup Logging file
-    sys.stdout = open('console.log', 'w')
-    sys.stderr = sys.stdout
     # Validate ADB and start server
     adb.validate()
     adb.start_server()

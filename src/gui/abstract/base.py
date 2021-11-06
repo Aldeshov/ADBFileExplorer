@@ -5,8 +5,9 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QStyleOption, QStyle, 
 
 
 class BaseIconWidget(QLabel):
-    def __init__(self, path, width=32, height=32):
-        super().__init__()
+    def __init__(self, path, width=32, height=32, context: QWidget = None):
+        super(BaseIconWidget, self).__init__()
+        self.setParent(context)
         self.pixmap = QPixmap(path)
         self.pixmap = self.pixmap.scaled(width, height, Qt.KeepAspectRatio)
         self.setPixmap(self.pixmap)
