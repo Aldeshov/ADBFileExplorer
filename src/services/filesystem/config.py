@@ -1,6 +1,6 @@
 import platform
 
-VERSION = '0.20'
+VERSION = 'alpha v0.20'
 
 
 class OS:
