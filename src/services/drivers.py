@@ -1,6 +1,7 @@
 import datetime
 
 from services.models import Device, FileTypes, File
+from services.settings import get_download_folder
 from services.shell import ls, adb, properties
 
 
@@ -24,6 +25,33 @@ def get_devices():
         devices.append(device)
         i += 2
     return devices
+
+
+def download_files(devices_id: str, source: str):
+    data = adb.pull(devices_id, source, get_download_folder())
+    if not data:
+        return 'Failed:  no response'
+    lines = data.split('\n')
+    lines.remove('')
+    return lines[len(lines) - 1]
+
+
+def download_files_to(devices_id: str, source: str, destination: str):
+    data = adb.pull(devices_id, source, destination)
+    if not data:
+        return 'Failed:  no response'
+    lines = data.split('\n')
+    lines.remove('')
+    return lines[len(lines) - 1]
+
+
+def upload_files(devices_id: str, source: str, destination: str):
+    data = adb.push(devices_id, source, destination)
+    if not data:
+        return 'Failed:  no response'
+    lines = data.split('\n')
+    lines.remove('')
+    return lines[len(lines) - 1]
 
 
 def get_file_type(device_id, path):

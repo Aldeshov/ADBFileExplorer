@@ -2,6 +2,7 @@ import datetime
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
+from PyQt5.QtWidgets import QStatusBar
 
 size_types = (
     ('BYTE', 'B'),
@@ -60,25 +61,24 @@ class Singleton(type):
 class File:
     def __init__(self, **kwargs):
         self.name: str = kwargs.get("name")
-        self._path: str = kwargs.get("path")
         self.permissions: str = kwargs.get("permissions")
         self.owner: str = kwargs.get("owner")
         self.group: str = kwargs.get("group")
         self.other: str = kwargs.get("other")
 
+        self._path: str = kwargs.get("path")
+        self._size: int = kwargs.get("size")
         self._date: datetime.datetime = kwargs.get("date_time")
 
         self._link: str = kwargs.get("link")
         self._link_type: str = kwargs.get("link_type")
-
-        self._size: int = kwargs.get("size")
 
     def __str__(self):
         return f"{self.name} at {self._path}"
 
     @property
     def size(self):
-        if self.type == FileTypes.DIRECTORY or self._link:
+        if not self._size:
             return ''
         count = 0
         result = self._size
@@ -112,6 +112,12 @@ class File:
     @property
     def link_type(self):
         return self._link_type
+
+    @property
+    def path(self):
+        if self._path and self._path.endswith('/'):
+            return f"{self._path}{self.name}"
+        return f"{self._path}/{self.name}"
 
     @property
     def type(self):
@@ -150,10 +156,7 @@ class Communicate(QObject):
     refresh = QtCore.pyqtSignal()
 
 
-class Global(object):
-    communicate = Communicate()
+class Global:
+    __metaclass__ = Singleton
 
-    def __new__(cls):
-        if not hasattr(cls, 'instance'):
-            cls.instance = super(Global, cls).__new__(cls)
-        return cls.instance
+    communicate = Communicate()

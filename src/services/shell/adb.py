@@ -1,4 +1,5 @@
 from services.filesystem import process, config
+from services.filesystem.live import LiveProcess
 from services.shell import ls
 
 ADB = config.ADB.path()
@@ -6,6 +7,8 @@ ADB = config.ADB.path()
 
 class Parameter:
     DEVICE = "-s"
+    PULL = 'pull'
+    PUSH = 'push'
     SHELL = "shell"
     CONNECT = "connect"
     VERSION = "--version"
@@ -43,6 +46,16 @@ def kill_server():
 
 def connect(device_id: str):
     command = [ADB, Parameter.CONNECT, device_id]
+    return process.run(command)
+
+
+def pull(device_id: str, source: str, destination: str):
+    command = [ADB, Parameter.DEVICE, device_id, Parameter.PULL, source, destination]
+    return process.run(command)
+
+
+def push(device_id: str, source: str, destination: str):
+    command = [ADB, Parameter.DEVICE, device_id, Parameter.PUSH, source, destination]
     return process.run(command)
 
 

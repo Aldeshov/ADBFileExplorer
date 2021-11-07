@@ -20,6 +20,6 @@ def run(args):
 
 def call(args):
     try:
-        return subprocess.call(args) == 0
+        return subprocess.run(args).returncode == 0
     except FileNotFoundError:
         return False

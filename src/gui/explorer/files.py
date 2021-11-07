@@ -1,11 +1,16 @@
+import threading
+import time
+
+from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtWidgets import QMenu, QAction, QGridLayout, QLabel, QWidget
+from PyQt5.QtGui import QMovie
+from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QWidget, QLabel, QVBoxLayout, QDialog, QPushButton, QFileDialog
 
 from gui.abstract.base import BaseListItemWidget, BaseListWidget, BaseListHeaderWidget
-from services.drivers import get_files
+from services.drivers import get_files, download_files, download_files_to
 from services.filesystem.config import Asset
 from services.manager import FileManager
-from services.models import File, FileTypes
+from services.models import File, FileTypes, Global
 
 
 class FileHeaderWidget(BaseListHeaderWidget):
@@ -30,8 +35,9 @@ class FileHeaderWidget(BaseListHeaderWidget):
 
 
 class FileListWidget(BaseListWidget):
-    def __init__(self):
+    def __init__(self, explorer):
         super(FileListWidget, self).__init__()
+        self.explorer = explorer
         self.files_widgets()
 
     def update(self):
@@ -42,16 +48,16 @@ class FileListWidget(BaseListWidget):
         files = get_files(FileManager.get_device(), FileManager.path())
         widgets = []
         for file in files:
-            item = FileItemWidget(file)
+            item = FileItemWidget(file, self.explorer)
             widgets.append(item)
         self.load(widgets, "Folder is empty")
 
 
 class FileItemWidget(BaseListItemWidget):
-    def __init__(self, file: File):
+    def __init__(self, file: File, explorer):
         super(FileItemWidget, self).__init__()
         self.file = file
-        self.properties = None
+        self.explorer = explorer
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
@@ -60,7 +66,7 @@ class FileItemWidget(BaseListItemWidget):
         )
 
         self.layout.addWidget(
-            self.name(file.name)
+            self.name(self.file.name)
         )
 
         self.layout.addWidget(self.separator())
@@ -113,11 +119,16 @@ class FileItemWidget(BaseListItemWidget):
         action_properties = QAction('Properties', self)
         action_properties.triggered.connect(self.file_properties)
 
-        action_copy = QAction('Copy', self)
-        action_move = QAction('Move', self)
+        action_copy = QAction('Copy to...', self)
+        action_move = QAction('Move to...', self)
         action_delete = QAction('Delete', self)
         action_rename = QAction('Rename', self)
-        action_download = QAction('Download to', self)
+
+        action_download = QAction('Download', self)
+        action_download.triggered.connect(self.download)
+
+        action_download_to = QAction('Download to...', self)
+        action_download_to.triggered.connect(self.download_to)
 
         menu = QMenu()
         menu.addSection("Actions")
@@ -126,45 +137,36 @@ class FileItemWidget(BaseListItemWidget):
         menu.addAction(action_delete)
         menu.addAction(action_rename)
         menu.addAction(action_download)
+        menu.addAction(action_download_to)
         menu.addSeparator()
         menu.addAction(action_properties)
+
         menu.exec(global_pos)
 
+    def download(self):
+        message = download_files(devices_id=FileManager.get_device(), source=self.file.path)
+        QMessageBox.information(self, 'Download', message)
+        self.explorer.mainwindow.statusBar().showMessage('Done', 3000)
+
+    def download_to(self):
+        name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
+        self.explorer.mainwindow.statusBar().showMessage('Canceled.', 3000)
+        if name:
+            message = download_files_to(devices_id=FileManager.get_device(), source=self.file.path, destination=name)
+            QMessageBox.information(self, 'Download', message)
+            self.explorer.mainwindow.statusBar().showMessage('Done', 3000)
+
     def file_properties(self):
-        if self.properties:
-            self.properties.close()
-        layout = QGridLayout()
-        title = QLabel("<b>" + str(self.file) + "</b>")
-        title.setToolTip(str(self.file))
-        layout.addWidget(title, 1, 0)
-        layout.addWidget(QLabel("Name:"), 2, 0)
-        layout.addWidget(QLabel(self.file.name), 2, 1)
-        layout.addWidget(QLabel("Owner:"), 3, 0)
-        layout.addWidget(QLabel(self.file.owner), 3, 1)
-        layout.addWidget(QLabel("Group:"), 4, 0)
-        layout.addWidget(QLabel(self.file.group), 4, 1)
-        layout.addWidget(QLabel("Permissions:"), 5, 0)
-        layout.addWidget(QLabel(self.file.permissions), 5, 1)
-        layout.addWidget(QLabel("Date:"), 6, 0)
-        layout.addWidget(QLabel(self.file.date_raw), 6, 1)
-        layout.addWidget(QLabel("Type:"), 7, 0)
-        layout.addWidget(QLabel(self.file.type), 7, 1)
+        info = f"<br/><u><b>{str(self.file)}</b></u><br/>"
+        info += f"<pre>Name:        {self.file.name or '-'}</pre>"
+        info += f"<pre>Owner:       {self.file.owner or '-'}</pre>"
+        info += f"<pre>Group:       {self.file.group or '-'}</pre>"
+        info += f"<pre>Size:        {self.file.size or '-'}</pre>"
+        info += f"<pre>Permissions: {self.file.permissions or '-'}</pre>"
+        info += f"<pre>Date:        {self.file.date_raw or '-'}</pre>"
+        info += f"<pre>Type:        {self.file.type or '-'}</pre>"
 
-        if self.file.type == FileTypes.FILE:
-            layout.addWidget(QLabel("Size:"), 8, 0)
-            layout.addWidget(QLabel(self.file.size), 8, 1)
-        elif self.file.type == FileTypes.LINK:
-            layout.addWidget(QLabel("Links to:"), 8, 0)
-            layout.addWidget(QLabel(self.file.link), 8, 1)
+        if self.file.type == FileTypes.LINK:
+            info += f"<pre>Links to:    {self.file.link or '-'}</pre>"
 
-        self.properties = QWidget()
-        self.properties.setFixedWidth(320)
-        self.properties.setFixedHeight(400)
-        self.properties.setLayout(layout)
-        self.properties.setWindowTitle('Properties')
-        self.properties.move(
-            self.parent().parent().mapToGlobal(self.parent().parent().pos()).x(),
-            self.parent().parent().mapToGlobal(self.parent().parent().pos()).y() - 100
-        )
-        self.properties.show()
-        self.properties.layout().deleteLater()
+        QMessageBox.information(self, 'Properties', info)

@@ -10,12 +10,12 @@ from services.models import Global
 
 
 class FileExplorerToolbar(QToolBar):
-    def __init__(self, statusbar):
+    def __init__(self, explorer):
         super(FileExplorerToolbar, self).__init__()
-        self.statusbar = statusbar
+        self.explorer = explorer
 
         plus = QAction(QIcon(Asset.icon_plus), 'Push file', self)
-        plus.triggered.connect(self.__action_get_file)
+        plus.triggered.connect(self.__action_upload_file)
         plus.setShortcut('Ctrl+F')
         self.addAction(plus)
 
@@ -26,13 +26,14 @@ class FileExplorerToolbar(QToolBar):
         up.setShortcut('Escape')
         self.addAction(up)
 
-    def __action_get_file(self):
-        name = QFileDialog.getOpenFileName(self, 'Open file', '/home')[0]
-        try:
-            if not name:
-                self.statusbar.message('INFO', 'File not selected')
-        except FileNotFoundError:
-            self.statusbar.message('ERROR', 'File not found')
+    def __action_upload_file(self):
+        name = QFileDialog.getOpenFileNames(self, 'Open file', '/home')
+        print(name)
+        # try:
+        #     if not name:
+        #         self.explorer.mainwindow.statusBar().showMessage('File not selected')
+        # except FileNotFoundError:
+        #     self.explorer.mainwindow.statusBar().showMessage('File not found')
 
     @staticmethod
     def __action_go_to_parent():
@@ -41,9 +42,9 @@ class FileExplorerToolbar(QToolBar):
 
 
 class Explorer(QWidget):
-    def __init__(self, statusbar):
+    def __init__(self, mainwindow):
         super().__init__()
-        self.statusbar = statusbar
+        self.mainwindow = mainwindow
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
@@ -60,10 +61,10 @@ class Explorer(QWidget):
 
     def files(self):
         self.clear()
-        self.toolbar = FileExplorerToolbar(self.statusbar)
+        self.toolbar = FileExplorerToolbar(self)
         self.header = FileHeaderWidget()
         self.header.setMaximumHeight(24)
-        self.body = FileListWidget()
+        self.body = FileListWidget(self)
         self.scroll.setWidget(self.body)
         self.layout.addWidget(self.toolbar)
         self.layout.addWidget(self.header)

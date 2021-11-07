@@ -1,53 +1,19 @@
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QStatusBar, QInputDialog, QMenuBar, QWidget, QLabel, \
-    QApplication
+from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QInputDialog, QMenuBar, QMessageBox
 
-from gui.abstract.base import BaseIconWidget
 from gui.explorer.main import Explorer
-from services.filesystem.config import Asset, VERSION
+from gui.others.help import About
+from services.filesystem.config import Asset
 from services.models import Global
 from services.shell import adb
 
 
-class About(QWidget):
-    def __init__(self):
-        super(QWidget, self).__init__()
-        icon = BaseIconWidget(Asset.logo, width=64, height=64, context=self)
-        icon.move(168, 40)
-        about_text = "<br/><br/>"
-        about_text += "<b>ADB File Explorer</b><br/>"
-        about_text += f"<i>Version: {VERSION}</i><br/>"
-        about_text += '<br/>'
-        about_text += "Open source application written in <i>Python</i><br/>"
-        about_text += "UI Library: <i>PyQt5</i><br/>"
-        about_text += "Developer: Azat<br/>"
-        link = 'https://github.com/Aldeshov/ADBFileExplorer'
-        about_text += f"Github: <a target='_blank' href='{link}'>{link}</a>"
-        about_label = QLabel(about_text, self)
-        about_label.setOpenExternalLinks(True)
-        about_label.move(10, 100)
-        self.setFixedWidth(400)
-        self.setFixedHeight(320)
-        self.setWindowTitle('About')
-
-        center = QApplication.desktop().availableGeometry(self).center()
-        self.move(int(center.x() - self.width() * 0.5), int(center.y() - self.height() * 0.5))
-
-
-class StatusBar(QStatusBar):
-    def __init__(self):
-        super(StatusBar, self).__init__()
-
-    def message(self, st, msg):
-        self.showMessage(st + " :  " + msg)
-
-
 class MenuBar(QMenuBar):
-    def __init__(self, statusbar):
+    def __init__(self, mainwindow: QMainWindow):
         super(MenuBar, self).__init__()
 
         self.about = About()
-        self.statusbar = statusbar
+        self.mainwindow = mainwindow
         self.file_menu = self.addMenu('&File')
         self.help_menu = self.addMenu('&Help')
 
@@ -71,22 +37,22 @@ class MenuBar(QMenuBar):
         self.help_menu.addAction(about_action)
 
     def connect_device(self):
-        self.statusbar.message('CONNECT', 'Connecting... Please wait')
+        self.mainwindow.statusBar().showMessage('Connecting... Please wait')
         text, ok = QInputDialog.getText(self, 'New Device', 'Enter device ip:')
-        self.statusbar.message('CONNECT', 'Canceled')
+        self.mainwindow.statusBar().showMessage('Connecting canceled.', 3000)
 
         if ok:
             message = adb.connect(str(text))
-            self.statusbar.message('CONNECT', message)
+            QMessageBox.information(self.mainwindow, 'Connect', message)
             Global().communicate.devices.emit()
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.setStatusBar(StatusBar())
-        self.setMenuBar(MenuBar(self.statusBar()))
-        self.setCentralWidget(Explorer(self.statusBar()))
+
+        self.setCentralWidget(Explorer(self))
+        self.setMenuBar(MenuBar(self))
 
         Global().communicate.devices.emit()
 
@@ -97,11 +63,12 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(Asset.logo))
         self.setWindowTitle('ADB File Explorer')
 
-        self.statusBar().message('ADB', 'Ready')
+        self.statusBar().showMessage('Ready', 5)
 
     def closeEvent(self, event):
-        # Stopping adb server
-        # adb.kill_server()
+        reply = QMessageBox.question(self, 'ADB Server', "Do you want to kill adb server?",
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
-        # close window
+        if reply == QMessageBox.Yes:
+            adb.kill_server()
         event.accept()
