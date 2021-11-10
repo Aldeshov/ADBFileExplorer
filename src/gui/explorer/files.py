@@ -1,16 +1,11 @@
-import threading
-import time
-
-from PyQt5 import QtGui
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QMovie
-from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QWidget, QLabel, QVBoxLayout, QDialog, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
 
 from gui.abstract.base import BaseListItemWidget, BaseListWidget, BaseListHeaderWidget
-from services.drivers import get_files, download_files, download_files_to
-from services.filesystem.config import Asset
-from services.manager import FileManager
-from services.models import File, FileTypes, Global
+from config import Asset
+from services.data.managers import FileManager
+from services.data.models import File, FileTypes, Global
+from services.data.repositories import FileRepository
 
 
 class FileHeaderWidget(BaseListHeaderWidget):
@@ -45,7 +40,12 @@ class FileListWidget(BaseListWidget):
         self.files_widgets()
 
     def files_widgets(self):
-        files = get_files(FileManager.get_device(), FileManager.path())
+        Global().communicate.pathtoolbar__refresh.emit()
+
+        files, error = FileRepository.files()
+        if error:
+            self.show_response_error('Files', error)
+
         widgets = []
         for file in files:
             item = FileItemWidget(file, self.explorer)
@@ -98,12 +98,9 @@ class FileItemWidget(BaseListItemWidget):
         elif self.file.type == FileTypes.FILE:
             return Asset.icon_file
         elif self.file.type == FileTypes.LINK:
+            if self.file.link_type == FileTypes.DIRECTORY:
+                return Asset.icon_link_folder
             return Asset.icon_link_file_universal
-            # if self.file.link_type == FileTypes.DIRECTORY:
-            #     return Asset.icon_link_folder
-            # elif self.file.link_type == FileTypes.FILE:
-            #     return Asset.icon_link_file
-            # return Asset.icon_link_file_unknown
         return Asset.icon_file_unknown
 
     def mouseReleaseEvent(self, event):
@@ -144,16 +141,21 @@ class FileItemWidget(BaseListItemWidget):
         menu.exec(global_pos)
 
     def download(self):
-        message = download_files(devices_id=FileManager.get_device(), source=self.file.path)
-        QMessageBox.information(self, 'Download', message)
+        print('Long process started: Downloading...')
+        response = FileRepository.download(self.file.path)
+        print('Long process finished')
+        self.show_response_status(response, 'Download')
         self.explorer.mainwindow.statusBar().showMessage('Done', 3000)
 
     def download_to(self):
-        name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
+        dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
         self.explorer.mainwindow.statusBar().showMessage('Canceled.', 3000)
-        if name:
-            message = download_files_to(devices_id=FileManager.get_device(), source=self.file.path, destination=name)
-            QMessageBox.information(self, 'Download', message)
+
+        if dir_name:
+            print('Long process started: Downloading...')
+            response = FileRepository.download_to(self.file.path, dir_name)
+            print('Long process finished')
+            self.show_response_status(response, 'Download to')
             self.explorer.mainwindow.statusBar().showMessage('Done', 3000)
 
     def file_properties(self):

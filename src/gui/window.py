@@ -3,8 +3,9 @@ from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QInputDialog, QMenuBar, 
 
 from gui.explorer.main import Explorer
 from gui.others.help import About
-from services.filesystem.config import Asset
-from services.models import Global
+from config import Asset
+from services.data.models import Global
+from services.data.repositories import DeviceRepository
 from services.shell import adb
 
 
@@ -38,12 +39,15 @@ class MenuBar(QMenuBar):
 
     def connect_device(self):
         self.mainwindow.statusBar().showMessage('Connecting... Please wait')
-        text, ok = QInputDialog.getText(self, 'New Device', 'Enter device ip:')
+        text, ok = QInputDialog.getText(self, 'New Device', 'Enter data ip:')
         self.mainwindow.statusBar().showMessage('Connecting canceled.', 3000)
 
         if ok:
-            message = adb.connect(str(text))
-            QMessageBox.information(self.mainwindow, 'Connect', message)
+            data, error = DeviceRepository.connect(str(text))
+            if data:
+                QMessageBox.information(self.mainwindow, 'Connect', data)
+            if error:
+                QMessageBox.critical(self.mainwindow, 'Connect', error)
             Global().communicate.devices.emit()
 
 

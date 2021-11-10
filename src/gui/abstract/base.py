@@ -1,10 +1,30 @@
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPaintEvent, QPainter, QPixmap, QMovie
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QStyleOption, QStyle, QSizePolicy, QVBoxLayout
+from PyQt5.QtGui import QPaintEvent, QPainter, QPixmap
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QStyleOption, QStyle, QSizePolicy, QVBoxLayout, QMessageBox
 
-from services.filesystem.config import Asset
-from services.models import Singleton
+
+class BaseResponsePopup(QWidget):
+    def __init__(self):
+        super().__init__()
+
+    def show_response_status(self, response, title):
+        data, error = response
+        if data:
+            self.show_response_successful(title, data)
+        if error:
+            self.show_response_error(title, error)
+        if not data and not error:
+            self.show_response_empty(title, 'No response got!')
+
+    def show_response_empty(self, title, message):
+        QMessageBox.warning(self, title, message)
+
+    def show_response_successful(self, title, message):
+        QMessageBox.information(self, title, message)
+
+    def show_response_error(self, title, message):
+        QMessageBox.critical(self, title, message)
 
 
 class BaseIconWidget(QLabel):
@@ -35,7 +55,7 @@ class BaseListHeaderWidget(QWidget):
         )
 
 
-class BaseListItemWidget(QWidget):
+class BaseListItemWidget(BaseResponsePopup):
     def __init__(self):
         super().__init__()
         self.setMinimumHeight(40)
@@ -109,7 +129,7 @@ class BaseListItemWidget(QWidget):
         return item
 
 
-class BaseListWidget(QWidget):
+class BaseListWidget(BaseResponsePopup):
     def __init__(self):
         super().__init__()
         self.widgets = []
@@ -119,19 +139,19 @@ class BaseListWidget(QWidget):
         self.layout.addStretch()
         self.setLayout(self.layout)
 
-    def load(self, widgets, empty_message="Empty"):
+    def load(self, widgets, empty_message="Empty", empty_full=True):
         for widget in self.widgets:
             self.layout.removeWidget(widget)
         self.widgets.clear()
 
         if not widgets:
-            self.empty(empty_message)
+            self.empty(empty_message, empty_full)
         else:
             for widget in widgets:
                 self.widgets.append(widget)
                 self.layout.insertWidget(self.layout.count() - 1, widget)
 
-    def empty(self, msg, full=True):
+    def empty(self, msg, full):
         if full:
             label = QLabel(msg)
             label.setAlignment(Qt.AlignCenter)

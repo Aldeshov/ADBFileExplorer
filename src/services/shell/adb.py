@@ -1,69 +1,83 @@
-from services.filesystem import process, config
-from services.filesystem.live import LiveProcess
-from services.shell import ls
+from services.shell.process import ShellProcessResponse
 
-ADB = config.ADB.path()
+ADB = 'adb'
 
 
 class Parameter:
-    DEVICE = "-s"
+    DEVICE = '-s'
     PULL = 'pull'
     PUSH = 'push'
-    SHELL = "shell"
-    CONNECT = "connect"
-    VERSION = "--version"
-    DEVICES = "devices"
-    START_SERVER = "start-server"
-    KILL_SERVER = "kill-server"
+    SHELL = 'shell'
+    CONNECT = 'connect'
+    HELP = '--help'
+    DEVICES = 'devices'
+    START_SERVER = 'start-server'
+    KILL_SERVER = 'kill-server'
+
+
+class ShellCommand:
+    LS = 'ls'
+    LS_LIST = [LS, '-l']
+    LS_VERSION = [LS, '--version']
+    LS_FULL_LIST = [LS, '-l', '-a']
+    LS_FILE_INFO = [LS, '-l', '-d']
+
+    GETPROP = 'getprop'
+    GETPROP_PRODUCT_MODEL = [GETPROP, 'ro.product.model']
+
+    MKDIR = 'mkdir'
+
+    CP = 'cp'
+
+    MV = 'mv'
 
 
 def validate():
-    command = [ADB, Parameter.VERSION]
-    validation = process.call(command)
-    message = "adb not found!\nPlease check 'bin' folder or replace necessary adb files to 'bin/'"
+    validation = version().Successfull
+    message = "ADB not found!"
     assert validation, message
 
 
 def version():
-    command = [ADB, Parameter.VERSION]
-    return process.run(command)
+    args = [ADB, Parameter.HELP]
+    return ShellProcessResponse(args)
 
 
 def devices():
-    command = [ADB, Parameter.DEVICES]
-    return process.run(command)
+    args = [ADB, Parameter.DEVICES]
+    return ShellProcessResponse(args)
 
 
 def start_server():
-    command = [ADB, Parameter.START_SERVER]
-    return process.run(command)
+    args = [ADB, Parameter.START_SERVER]
+    return ShellProcessResponse(args)
 
 
 def kill_server():
-    command = [ADB, Parameter.KILL_SERVER]
-    return process.run(command)
+    args = [ADB, Parameter.KILL_SERVER]
+    return ShellProcessResponse(args)
 
 
 def connect(device_id: str):
-    command = [ADB, Parameter.CONNECT, device_id]
-    return process.run(command)
+    args = [ADB, Parameter.CONNECT, device_id]
+    return ShellProcessResponse(args)
 
 
-def pull(device_id: str, source: str, destination: str):
-    command = [ADB, Parameter.DEVICE, device_id, Parameter.PULL, source, destination]
-    return process.run(command)
+def pull(device_id: str, source_path: str, destination_path: str):
+    args = [ADB, Parameter.DEVICE, device_id, Parameter.PULL, source_path, destination_path]
+    return ShellProcessResponse(args)
 
 
-def push(device_id: str, source: str, destination: str):
-    command = [ADB, Parameter.DEVICE, device_id, Parameter.PUSH, source, destination]
-    return process.run(command)
+def push(device_id: str, source_path: str, destination_path: str):
+    args = [ADB, Parameter.DEVICE, device_id, Parameter.PUSH, source_path, destination_path]
+    return ShellProcessResponse(args)
 
 
-def shell(device_id: str, args: []):
-    command = [ADB, Parameter.DEVICE, device_id, Parameter.SHELL] + args
-    return process.run(command)
+def shell(device_id: str, args: list):
+    args = [ADB, Parameter.DEVICE, device_id, Parameter.SHELL] + args
+    return ShellProcessResponse(args)
 
 
 def file_list(device_id: str, path: str):
-    command = [ADB, Parameter.DEVICE, device_id, ls.LS, path]
-    return process.run(command)
+    args = [ADB, Parameter.DEVICE, device_id, ShellCommand.LS, path]
+    return ShellProcessResponse(args)

@@ -3,7 +3,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QLabel, QApplication
 
 from gui.abstract.base import BaseIconWidget
-from services.filesystem.config import Asset, VERSION
+from config import Asset, VERSION
 
 
 class About(QWidget):
