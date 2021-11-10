@@ -7,7 +7,10 @@ contains all necessary files to work with android devices
 </pre>
 
 <span style="color: yellow">
+# TODO<br/>
 Project not finished and requires further development<br/>
+Works well on Linux (Tested on: Ubuntu 20.04)<br/>
+On windows 10 has some issues<br/>
 </span>
 
 ## Screenshots

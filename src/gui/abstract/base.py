@@ -8,14 +8,14 @@ class BaseResponsePopup(QWidget):
     def __init__(self):
         super().__init__()
 
-    def show_response_status(self, response, title):
+    def show_response_status(self, response, title, empty_response=False):
         data, error = response
         if data:
             self.show_response_successful(title, data)
         if error:
             self.show_response_error(title, error)
-        if not data and not error:
-            self.show_response_empty(title, 'No response got!')
+        if empty_response and not data and not error:
+            self.show_response_empty(title, 'Empty response!')
 
     def show_response_empty(self, title, message):
         QMessageBox.warning(self, title, message)
