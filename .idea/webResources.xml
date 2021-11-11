@@ -6,7 +6,6 @@
         <entryData>
           <resourceRoots>
             <path value="file://$PROJECT_DIR$/assets" />
-            <path value="file://$PROJECT_DIR$/bin" />
           </resourceRoots>
         </entryData>
       </entry>

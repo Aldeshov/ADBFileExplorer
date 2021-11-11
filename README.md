@@ -29,7 +29,6 @@ Download for Linux and Windows<br/>
 <pre>*Window style depends on OS type and theme</pre>
 ## Contains
 
-/bin - executable adb files <br/>
 /assets - icons storage <br/>
 /src - source code written in `python` <br/>
 
