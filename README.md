@@ -6,6 +6,10 @@ All in one project
 contains all necessary files to work with android devices
 </pre>
 
+<a href='https://github.com/Aldeshov/ADBFileExplorer/releases/tag/alpha-v0.32'>
+Download for Linux and Windows<br/>
+</a>
+
 <span style="color: yellow">
 # TODO<br/>
 Project not finished and requires further development<br/>
