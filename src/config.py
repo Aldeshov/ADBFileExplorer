@@ -1,6 +1,6 @@
 import pathlib
 
-VERSION = 'alpha v0.31'
+VERSION = 'alpha v0.32'
 # PATH = pathlib.Path(__file__).parent.resolve()  # Production mode
 PATH = '.'  # Debugging mode
 
@@ -15,6 +15,7 @@ class Asset:
     icon_plus = f'{PATH}/assets/icons/plus.png'
     icon_up = f'{PATH}/assets/icons/up.png'
     icon_ok = f'{PATH}/assets/icons/ok.png'
+    icon_go = f'{PATH}/assets/icons/go.png'
 
     icon_file = f'{PATH}/assets/icons/files/file.png'
     icon_folder = f'{PATH}/assets/icons/files/folder.png'

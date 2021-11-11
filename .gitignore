@@ -4,7 +4,7 @@ __pycache__
 # Virtual Environment
 /venv
 
-# Compiled Files
+# Compiled Files -- pyinstaller
 /output
 /dist
 /build

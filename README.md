@@ -1,4 +1,4 @@
-# ADB File Explorer `alpha v0.31`
+# ADB File Explorer `alpha v0.32`
 
 <pre>
 Simple File explorer for ADB devices

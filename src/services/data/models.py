@@ -74,7 +74,7 @@ class File:
         self.__link_type: str = kwargs.get("link_type")
 
     def __str__(self):
-        return f"{self.name} at {self.__path}"
+        return f"{self.name} at {self.location}"
 
     @property
     def size(self):
@@ -117,12 +117,16 @@ class File:
         return self.__link_type
 
     @property
-    def path(self):
+    def full_path(self):
         if self.__path and self.__path.endswith('/'):
             return f"{self.__path}{self.name}"
         elif self.__path:
             return f"{self.__path}/{self.name}"
         return self.name
+
+    @property
+    def location(self):
+        return self.__path
 
     @property
     def type(self):
@@ -135,6 +139,10 @@ class File:
     def date_raw(self):
         if self.__date:
             return str(self.__date)[:-3]
+
+    @property
+    def isdir(self):
+        return self.type == FileTypes.DIRECTORY or self.link_type == FileTypes.DIRECTORY
 
 
 class FileTypes:

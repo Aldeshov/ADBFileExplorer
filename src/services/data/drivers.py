@@ -6,14 +6,6 @@ from services.data.models import Device, File, FileTypes
 from services.shell import adb
 
 
-def connect(device_id: str) -> (str, str):
-    response = adb.connect(device_id)
-    if not response.Successfull:
-        return None, response.ErrorData or response.OutputData
-
-    return response.OutputData, None
-
-
 def get_devices() -> (List[Device], str):
     response = adb.devices()
     if not response.Successfull:
@@ -41,6 +33,14 @@ def get_devices() -> (List[Device], str):
     return devices, None
 
 
+def connect(device_id: str) -> (str, str):
+    response = adb.connect(device_id)
+    if not response.Successfull:
+        return None, response.ErrorData or response.OutputData
+
+    return response.OutputData, None
+
+
 def download_path(devices_id: str, source_path: str, destination_path: str) -> (str, str):
     response = adb.pull(devices_id, source_path, destination_path)
     if not response.Successfull:
@@ -58,7 +58,7 @@ def upload_path(devices_id: str, source_path: str, destination_path: str) -> (st
     return lines[len(lines) - 1], None
 
 
-def create_folder(device_id, new_path) -> (str, str):
+def create_folder(device_id: str, new_path: str) -> (str, str):
     args = [adb.ShellCommand.MKDIR, new_path]
     response = adb.shell(device_id, args)
     if not response.Successfull:
@@ -67,37 +67,31 @@ def create_folder(device_id, new_path) -> (str, str):
     return response.OutputData, response.ErrorData
 
 
-# Driver of getting file from ls command
-def get_file(device_id, path) -> (File, str):
+# Driver of getting file with adb
+def get_file(device_id: str, path: str) -> (File, str):
+    while path.endswith('/'):
+        path = path[:-1]
+    if not path:
+        path = '/'
+
     args = adb.ShellCommand.LS_FILE_INFO + [path.replace(' ', r"\ ")]
     response = adb.shell(device_id, args)
     if not response.Successfull:
         return None, response.ErrorData or response.OutputData
 
-    # TODO
-    return None, None
-
-
-def get_link_type(device_id, path) -> (str, str):
-    args = adb.ShellCommand.LS_FILE_INFO + [path.replace(' ', r"\ ")]
-    response = adb.shell(device_id, args)
-
-    if not response.Successfull:
-        return None, response.ErrorData or response.OutputData
-
-    if not response.OutputData:
+    lines = __lines_from_data(response.OutputData)
+    if not lines:
         return None, None
 
-    if response.OutputData.__contains__('No such file or directory'):
-        return None, response.OutputData
+    field = lines[0]
 
-    if response.OutputData.__contains__('Not a directory'):
-        return FileTypes.FILE, None
-
-    if not response.OutputData[0] == '/':
-        return FileTypes.DIRECTORY, None
-
-    return None, None
+    if re.fullmatch(r'[-dlcbsp][-rwxst]{9}\s+\d+\s+\S+\s+\S+\s*\d*,?\s+\d+\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+', field):
+        file = __converter_to_file_version2(field, path=path[0:(path.rindex('/') + 1)], device_id=device_id)
+        return file, None
+    elif re.fullmatch(r'[-dlcbsp][-rwxst]{9}\s+\S+\s+\S+\s*\d*,?\s*\d*\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .*', field):
+        file = __converter_to_file_version1(field, path=path[0:(path.rindex('/') + 1)], device_id=device_id)
+        return file, None
+    return None, response.OutputData
 
 
 # Driver of getting file list with adb
@@ -125,14 +119,15 @@ def get_files__adb_shell_ls(device_id, path) -> (List[File], str):
         for line in lines[2:]:
             if re.fullmatch(pattern, line):
                 files.append(__converter_to_file_version2(line, path=path, device_id=device_id))
+        return files, None
 
     elif re.fullmatch(r'[-dlcbsp][-rwxst]{9}\s+\S+\s+\S+\s*\d*,?\s*\d*\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+', check):
         pattern = r'[-dlcbsp][-rwxst]{9}\s+\S+\s+\S+\s*\d*,?\s*\d*\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+'
         for line in lines:
             if re.fullmatch(pattern, line):
                 files.append(__converter_to_file_version1(line, path=path, device_id=device_id))
-
-    return files, response.ErrorData
+        return files, None
+    return [], response.ErrorData or response.OutputData
 
 
 # command: adb -s <device_id> ls <path>
@@ -173,6 +168,26 @@ def __lines_from_data(data: str, separator=r'\n') -> list:
     return list(filtered)
 
 
+# Get File type of link by first char of response:
+# drwxrwxrwx 1|<Empty> root root 0|<Empty> <filename>
+def __get_link_type(device_id: str, path: str, name: str) -> str:
+    if not path or not name:
+        return FileTypes.UNKNOWN
+
+    full_path = f"{path}{name}/"
+    args = adb.ShellCommand.LS_FILE_INFO + [full_path.replace(' ', r"\ ")]
+    response = adb.shell(device_id, args)
+
+    if not response.Successfull or not response.OutputData:
+        return FileTypes.UNKNOWN
+
+    if response.OutputData.startswith('d'):
+        return FileTypes.DIRECTORY
+    elif response.OutputData.__contains__('Not a'):
+        return FileTypes.FILE
+    return FileTypes.UNKNOWN
+
+
 # Line Converter (to File()) - version 1 (old)
 # dataline must be exact to regex:
 # r'[-dlcbsp][-rwxst]{9}\s+\S+\s+\S+\s*\d*,?\s*\d*\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+'
@@ -181,9 +196,11 @@ def __converter_to_file_version1(dataline: str, **kwargs) -> File:
     date_pattern = '%Y-%m-%d %H:%M'
 
     size = 0
-    link = ''
+    link = None
+    date = None
     other = None
     link_type = None
+    name = '<Unknown Type1?>'
 
     permission = fields[0]
     owner = fields[1]
@@ -201,15 +218,15 @@ def __converter_to_file_version1(dataline: str, **kwargs) -> File:
         name = " ".join(fields[5:fields.index('->')])
         link = " ".join(fields[fields.index('->') + 1:])
         date = datetime.datetime.strptime(f"{fields[3]} {fields[4]}", date_pattern)
-        link_type, error = get_link_type(kwargs.get('device_id'), f"{kwargs.get('path')}{name}/")
+        link_type = __get_link_type(kwargs.get('device_id'), kwargs.get('path'), name)
     elif code == 'c' or code == 'b':
         size = int(fields[4])
         other = fields[3]
         name = " ".join(fields[7:])
         date = datetime.datetime.strptime(f"{fields[5]} {fields[6]}", date_pattern)
-    else:
-        date = None
-        name = f'<Unknown file type {code} ?>'
+
+    if name.startswith('/'):
+        name = name[name.rindex('/') + 1:]
 
     return File(
         path=kwargs.get("path"),
@@ -234,12 +251,11 @@ def __converter_to_file_version2(dataline: str, **kwargs) -> File:
     date_pattern = '%Y-%m-%d %H:%M'
 
     size = 0
-    name = '<Unknown Type ?>'
     date = None
     link = None
     other = None
     link_type = None
-    date_time = None
+    name = '<Unknown Type2?>'
 
     permission = fields[0]
     file_type = fields[1]
@@ -249,21 +265,21 @@ def __converter_to_file_version2(dataline: str, **kwargs) -> File:
     code = permission[0]
     if ['s', 'd', '-', 'l'].__contains__(code):
         size = int(fields[4])
-        date = f"{fields[5]} {fields[6]}"
+        date = datetime.datetime.strptime(f"{fields[5]} {fields[6]}", date_pattern)
         name = " ".join(fields[7:])
         if code == 'l':
             name = " ".join(fields[7:fields.index('->')])
             link = " ".join(fields[fields.index('->') + 1:])
-            link_type, error = get_link_type(kwargs.get('device_id'), f"{kwargs.get('path')}{name}/")
+            link_type = __get_link_type(kwargs.get('device_id'), kwargs.get('path'), name)
 
     elif ['c', 'b'].__contains__(code):
         other = fields[4]
         size = int(fields[5])
-        date = f"{fields[6]} {fields[7]}"
+        date = datetime.datetime.strptime(f"{fields[6]} {fields[7]}", date_pattern)
         name = fields[8]
 
-    if date:
-        date_time = datetime.datetime.strptime(date, date_pattern)
+    if name.startswith('/'):
+        name = name[name.rindex('/') + 1:]
 
     return File(
         path=kwargs.get("path"),
@@ -272,7 +288,7 @@ def __converter_to_file_version2(dataline: str, **kwargs) -> File:
         file_type=file_type,
         owner=owner,
         group=group,
-        date_time=date_time,
+        date_time=date,
         link=link,
         link_type=link_type,
         size=size,
@@ -288,10 +304,10 @@ def __converter_to_file_default(dataline: str, **kwargs) -> File:
     fields = dataline.split()
     octal = oct(int(fields[0], 16))[2:]
 
-    date_time = datetime.datetime.utcfromtimestamp(int(fields[2], 16))
-    permission = __converter_to_permissions_default(list(octal))
     size = int(fields[1], 16)
-    name = fields[3]
+    name = " ".join(fields[3:])
+    permission = __converter_to_permissions_default(list(octal))
+    date_time = datetime.datetime.utcfromtimestamp(int(fields[2], 16))
 
     return File(
         name=name,

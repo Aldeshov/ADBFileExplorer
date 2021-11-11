@@ -1,7 +1,7 @@
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QFocusEvent
 from PyQt5.QtWidgets import QWidget, QScrollArea, QVBoxLayout, QFileDialog, QHBoxLayout, QPushButton, \
-    QComboBox, QLineEdit, QSizePolicy, QInputDialog
+    QComboBox, QLineEdit, QSizePolicy, QInputDialog, QMessageBox
 
 from gui.abstract.base import BaseResponsePopup
 from gui.explorer.devices import DeviceHeaderWidget, DeviceListWidget
@@ -10,6 +10,15 @@ from config import Asset
 from services.data.managers import FileManager
 from services.data.models import Global
 from services.data.repositories import FileRepository
+
+
+class PathBar(QLineEdit):
+    def __init__(self, parent: QWidget = 0):
+        super(PathBar, self).__init__(parent)
+
+    def focusInEvent(self, event: QFocusEvent):
+        super(PathBar, self).focusInEvent(event)
+        self.setText(FileManager.path())
 
 
 class FileExplorerToolbar(BaseResponsePopup):
@@ -43,25 +52,38 @@ class FileExplorerToolbar(BaseResponsePopup):
         self.parent_dir.setSizePolicy(policy)
         self.layout.addWidget(self.parent_dir)
 
-        self.path = QLineEdit(self)
+        self.path = PathBar(self)
         policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         policy.setHorizontalStretch(8)
         self.path.setSizePolicy(policy)
         self.layout.addWidget(self.path)
+        self.path.returnPressed.connect(self.__action_go)
         Global().communicate.pathtoolbar__refresh.connect(self.__update_path)
 
-        self.go = QPushButton(QIcon(Asset.icon_ok), None, self)
-        self.go.clicked.connect(self.__action_go)
+        self.go = QPushButton(QIcon(Asset.icon_go), None, self)
         policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         policy.setHorizontalStretch(1)
         self.parent_dir.setSizePolicy(policy)
+        self.go.clicked.connect(self.__action_go)
         self.layout.addWidget(self.go)
 
     def __update_path(self):
         self.path.setText(f"{FileManager.get_device()}:{FileManager.path()}")
 
     def __action_go(self):
-        print(self.path.text())
+        path = self.path.text()
+        self.path.clearFocus()
+        if path.startswith(f"{FileManager.get_device()}:"):
+            path = path.replace(f"{FileManager.get_device()}:", '')
+
+        file, error = FileRepository.file(path)
+        if error:
+            QMessageBox.critical(self, 'Go to folder', error)
+            Global().communicate.pathtoolbar__refresh.emit()
+        elif file and FileManager.go(file):
+            Global().communicate.files__refresh.emit()
+        else:
+            QMessageBox.critical(self, 'Go to folder', 'Cannot open location')
 
     def __action_upload(self, item):
         if item == self.Action.upload_files:

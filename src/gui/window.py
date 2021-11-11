@@ -39,7 +39,7 @@ class MenuBar(QMenuBar):
 
     def connect_device(self):
         self.mainwindow.statusBar().showMessage('Connecting... Please wait')
-        text, ok = QInputDialog.getText(self, 'New Device', 'Enter data ip:')
+        text, ok = QInputDialog.getText(self, 'New Device', 'Enter device ip:')
         self.mainwindow.statusBar().showMessage('Connecting canceled.', 3000)
 
         if ok:

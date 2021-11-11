@@ -100,6 +100,8 @@ class FileItemWidget(BaseListItemWidget):
         elif self.file.type == FileTypes.LINK:
             if self.file.link_type == FileTypes.DIRECTORY:
                 return Asset.icon_link_folder
+            elif self.file.link_type == FileTypes.FILE:
+                return Asset.icon_link_file
             return Asset.icon_link_file_universal
         return Asset.icon_file_unknown
 
@@ -111,38 +113,44 @@ class FileItemWidget(BaseListItemWidget):
                 self.parent().update()
 
     def context_menu(self, pos: QPoint):
-        global_pos = self.mapToGlobal(pos)
-
-        action_properties = QAction('Properties', self)
-        action_properties.triggered.connect(self.file_properties)
+        menu = QMenu()
+        menu.addSection("Actions")
 
         action_copy = QAction('Copy to...', self)
+        action_copy.setDisabled(True)
+        menu.addAction(action_copy)
+
         action_move = QAction('Move to...', self)
-        action_delete = QAction('Delete', self)
+        action_move.setDisabled(True)
+        menu.addAction(action_move)
+
         action_rename = QAction('Rename', self)
+        action_rename.setDisabled(True)
+        menu.addAction(action_rename)
+
+        action_delete = QAction('Delete', self)
+        action_delete.setDisabled(True)
+        menu.addAction(action_delete)
 
         action_download = QAction('Download', self)
         action_download.triggered.connect(self.download)
+        menu.addAction(action_download)
 
         action_download_to = QAction('Download to...', self)
         action_download_to.triggered.connect(self.download_to)
-
-        menu = QMenu()
-        menu.addSection("Actions")
-        menu.addAction(action_copy)
-        menu.addAction(action_move)
-        menu.addAction(action_delete)
-        menu.addAction(action_rename)
-        menu.addAction(action_download)
         menu.addAction(action_download_to)
+
         menu.addSeparator()
+
+        action_properties = QAction('Properties', self)
+        action_properties.triggered.connect(self.file_properties)
         menu.addAction(action_properties)
 
-        menu.exec(global_pos)
+        menu.exec(self.mapToGlobal(pos))
 
     def download(self):
         print('Long process started: Downloading...')
-        response = FileRepository.download(self.file.path)
+        response = FileRepository.download(self.file.full_path)
         print('Long process finished')
         self.show_response_status(response, 'Download')
         self.explorer.mainwindow.statusBar().showMessage('Done', 3000)
@@ -153,7 +161,7 @@ class FileItemWidget(BaseListItemWidget):
 
         if dir_name:
             print('Long process started: Downloading...')
-            response = FileRepository.download_to(self.file.path, dir_name)
+            response = FileRepository.download_to(self.file.full_path, dir_name)
             print('Long process finished')
             self.show_response_status(response, 'Download to')
             self.explorer.mainwindow.statusBar().showMessage('Done', 3000)

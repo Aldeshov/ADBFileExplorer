@@ -1,4 +1,4 @@
-from services.data.models import File, FileTypes, Singleton
+from services.data.models import File, Singleton
 
 
 class FileManager:
@@ -21,11 +21,21 @@ class FileManager:
         if not cls.__DEVICE:
             return False
 
-        if file.type == FileTypes.DIRECTORY:
+        if file.isdir and file.name:
             cls.__PATH.append(file.name)
             return True
-        elif file.link_type == FileTypes.DIRECTORY:
-            cls.__PATH.append(file.name)
+
+        return False
+
+    @classmethod
+    def go(cls, file: File):
+        if file.isdir and file.location:
+            cls.__PATH.clear()
+            for name in file.location.split('/'):
+                if name:
+                    cls.__PATH.append(name)
+            if file.name:
+                cls.__PATH.append(file.name)
             return True
         return False
 
