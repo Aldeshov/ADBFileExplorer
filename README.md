@@ -2,15 +2,15 @@
 
 <pre>
 Simple File explorer for ADB devices
-All in one project
-contains all necessary files to work with android devices
+Allows you to see list of files on your device and 
+upload to/download it
 </pre>
 
 <span style="color: yellow">
 # TODO<br/>
-Project not finished and requires further development<br/>
-Works well on Linux (Tested on: Ubuntu 20.04)<br/>
-On windows 10 has some issues<br/>
+# Project not finished and requires further development<br/>
+# Works well on Linux (Tested on: Ubuntu 20.04)<br/>
+# On windows 10 has some issues<br/>
 </span>
 
 ### Downloading
