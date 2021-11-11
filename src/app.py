@@ -5,6 +5,9 @@ from PyQt5.QtWidgets import QApplication
 from gui.window import MainWindow
 from services.shell import adb
 
+
+# To convert project to executable files with pyinstaller
+# change PATH in config.py to production mode
 if __name__ == '__main__':
     # Validate ADB and start server
     adb.validate()

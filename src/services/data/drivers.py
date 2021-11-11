@@ -69,7 +69,7 @@ def create_folder(device_id, new_path) -> (str, str):
 
 # Driver of getting file from ls command
 def get_file(device_id, path) -> (File, str):
-    args = adb.ShellCommand.LS_FILE_INFO + [path]
+    args = adb.ShellCommand.LS_FILE_INFO + [path.replace(' ', r"\ ")]
     response = adb.shell(device_id, args)
     if not response.Successfull:
         return None, response.ErrorData or response.OutputData
@@ -79,7 +79,7 @@ def get_file(device_id, path) -> (File, str):
 
 
 def get_link_type(device_id, path) -> (str, str):
-    args = adb.ShellCommand.LS_FILE_INFO + [path]
+    args = adb.ShellCommand.LS_FILE_INFO + [path.replace(' ', r"\ ")]
     response = adb.shell(device_id, args)
 
     if not response.Successfull:
@@ -194,7 +194,7 @@ def __converter_to_file_version1(dataline: str, **kwargs) -> File:
         name = " ".join(fields[5:])
         date = datetime.datetime.strptime(f"{fields[3]} {fields[4]}", date_pattern)
     elif code == '-':
-        size = fields[3]
+        size = int(fields[3])
         name = " ".join(fields[6:])
         date = datetime.datetime.strptime(f"{fields[4]} {fields[5]}", date_pattern)
     elif code == 'l':
@@ -203,7 +203,7 @@ def __converter_to_file_version1(dataline: str, **kwargs) -> File:
         date = datetime.datetime.strptime(f"{fields[3]} {fields[4]}", date_pattern)
         link_type, error = get_link_type(kwargs.get('device_id'), f"{kwargs.get('path')}{name}/")
     elif code == 'c' or code == 'b':
-        size = fields[4]
+        size = int(fields[4])
         other = fields[3]
         name = " ".join(fields[7:])
         date = datetime.datetime.strptime(f"{fields[5]} {fields[6]}", date_pattern)
@@ -258,7 +258,7 @@ def __converter_to_file_version2(dataline: str, **kwargs) -> File:
 
     elif ['c', 'b'].__contains__(code):
         other = fields[4]
-        size = fields[5]
+        size = int(fields[5])
         date = f"{fields[6]} {fields[7]}"
         name = fields[8]
 

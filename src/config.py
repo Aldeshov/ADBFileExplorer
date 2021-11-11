@@ -1,21 +1,25 @@
+import pathlib
+
 VERSION = 'alpha v0.31'
+# PATH = pathlib.Path(__file__).parent.resolve()  # Production mode
+PATH = '.'  # Debugging mode
 
 
 class Asset:
-    logo = 'assets/logo.png'
+    logo = f'{PATH}/assets/logo.png'
 
-    icon_exit = 'assets/icons/exit.png'
-    icon_connect = 'assets/icons/connect.png'
-    icon_unknown = 'assets/icons/unknown.png'
-    icon_phone = 'assets/icons/phone.png'
-    icon_plus = 'assets/icons/plus.png'
-    icon_up = 'assets/icons/up.png'
-    icon_ok = 'assets/icons/ok.png'
+    icon_exit = f'{PATH}/assets/icons/exit.png'
+    icon_connect = f'{PATH}/assets/icons/connect.png'
+    icon_unknown = f'{PATH}/assets/icons/unknown.png'
+    icon_phone = f'{PATH}/assets/icons/phone.png'
+    icon_plus = f'{PATH}/assets/icons/plus.png'
+    icon_up = f'{PATH}/assets/icons/up.png'
+    icon_ok = f'{PATH}/assets/icons/ok.png'
 
-    icon_file = 'assets/icons/files/file.png'
-    icon_folder = 'assets/icons/files/folder.png'
-    icon_file_unknown = 'assets/icons/files/file_unknown.png'
-    icon_link_file = 'assets/icons/files/link_file.png'
-    icon_link_folder = 'assets/icons/files/link_folder.png'
-    icon_link_file_unknown = 'assets/icons/files/link_file_unknown.png'
-    icon_link_file_universal = 'assets/icons/files/link_file_universal.png'
+    icon_file = f'{PATH}/assets/icons/files/file.png'
+    icon_folder = f'{PATH}/assets/icons/files/folder.png'
+    icon_file_unknown = f'{PATH}/assets/icons/files/file_unknown.png'
+    icon_link_file = f'{PATH}/assets/icons/files/link_file.png'
+    icon_link_folder = f'{PATH}/assets/icons/files/link_folder.png'
+    icon_link_file_unknown = f'{PATH}/assets/icons/files/link_file_unknown.png'
+    icon_link_file_universal = f'{PATH}/assets/icons/files/link_file_universal.png'
