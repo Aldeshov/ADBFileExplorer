@@ -3,13 +3,13 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QLabel, QApplication
 
 from gui.abstract.base import BaseIconWidget
-from config import Asset, VERSION
+from config import Resource, VERSION
 
 
 class About(QWidget):
     def __init__(self):
         super(QWidget, self).__init__()
-        icon = BaseIconWidget(Asset.logo, width=64, height=64, context=self)
+        icon = BaseIconWidget(Resource.logo, width=64, height=64, context=self)
         icon.move(168, 40)
         about_text = "<br/><br/>"
         about_text += "<b>ADB File Explorer</b><br/>"
@@ -25,7 +25,7 @@ class About(QWidget):
         about_label.move(10, 100)
 
         self.setAttribute(Qt.WA_QuitOnClose, False)
-        self.setWindowIcon(QIcon(Asset.logo))
+        self.setWindowIcon(QIcon(Resource.logo))
         self.setWindowTitle('About')
         self.setFixedHeight(320)
         self.setFixedWidth(400)

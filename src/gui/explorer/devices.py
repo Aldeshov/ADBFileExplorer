@@ -1,7 +1,7 @@
 from PyQt5.QtCore import Qt
 
 from gui.abstract.base import BaseListWidget, BaseListItemWidget, BaseListHeaderWidget
-from config import Asset
+from config import Resource
 from services.data.managers import FileManager
 from services.data.models import Device, Global, DeviceTypes
 from services.data.repositories import DeviceRepository
@@ -38,9 +38,9 @@ class DeviceItemWidget(BaseListItemWidget):
         super().__init__()
         self.device = device
         if device.type == DeviceTypes.DEVICE:
-            self.layout.addWidget(self.icon(Asset.icon_phone))
+            self.layout.addWidget(self.icon(Resource.icon_phone))
         else:
-            self.layout.addWidget(self.icon(Asset.icon_unknown))
+            self.layout.addWidget(self.icon(Resource.icon_unknown))
 
         self.layout.addWidget(self.name(device.name))
         self.layout.addWidget(self.property(device.id,))

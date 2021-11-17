@@ -1,8 +1,8 @@
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
 
+from config import Resource
 from gui.abstract.base import BaseListItemWidget, BaseListWidget, BaseListHeaderWidget
-from config import Asset
 from services.data.managers import FileManager
 from services.data.models import File, FileTypes, Global
 from services.data.repositories import FileRepository
@@ -40,11 +40,10 @@ class FileListWidget(BaseListWidget):
         self.files_widgets()
 
     def files_widgets(self):
-        Global().communicate.pathtoolbar__refresh.emit()
-
         files, error = FileRepository.files()
         if error:
             self.show_response_error('Files', error)
+        Global().communicate.path_toolbar__refresh.emit()
 
         widgets = []
         for file in files:
@@ -94,16 +93,16 @@ class FileItemWidget(BaseListItemWidget):
     @property
     def icon_path(self):
         if self.file.type == FileTypes.DIRECTORY:
-            return Asset.icon_folder
+            return Resource.icon_folder
         elif self.file.type == FileTypes.FILE:
-            return Asset.icon_file
+            return Resource.icon_file
         elif self.file.type == FileTypes.LINK:
             if self.file.link_type == FileTypes.DIRECTORY:
-                return Asset.icon_link_folder
+                return Resource.icon_link_folder
             elif self.file.link_type == FileTypes.FILE:
-                return Asset.icon_link_file
-            return Asset.icon_link_file_universal
-        return Asset.icon_file_unknown
+                return Resource.icon_link_file
+            return Resource.icon_link_file_universal
+        return Resource.icon_file_unknown
 
     def mouseReleaseEvent(self, event):
         super(FileItemWidget, self).mouseReleaseEvent(event)
@@ -149,22 +148,26 @@ class FileItemWidget(BaseListItemWidget):
         menu.exec(self.mapToGlobal(pos))
 
     def download(self):
-        print('Long process started: Downloading...')
-        response = FileRepository.download(self.file.full_path)
-        print('Long process finished')
-        self.show_response_status(response, 'Download')
-        self.explorer.mainwindow.statusBar().showMessage('Done', 3000)
+        self.explorer.main_window.statusBar().showMessage('Downloading...')
+        FileRepository.download(self.file.full_path, self.__downloaded)
+        self.explorer.loading_download.show()
 
     def download_to(self):
         dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
-        self.explorer.mainwindow.statusBar().showMessage('Canceled.', 3000)
+        self.explorer.main_window.statusBar().showMessage('Canceled.', 3000)
 
         if dir_name:
-            print('Long process started: Downloading...')
-            response = FileRepository.download_to(self.file.full_path, dir_name)
-            print('Long process finished')
-            self.show_response_status(response, 'Download to')
-            self.explorer.mainwindow.statusBar().showMessage('Done', 3000)
+            self.explorer.main_window.statusBar().showMessage('Downloading...')
+            FileRepository.download_to(self.file.full_path, dir_name, self.__downloaded)
+            self.explorer.loading_download.show()
+
+    def __downloaded(self, code, error):
+        self.explorer.loading_download.close()
+        if error or code != 0:
+            self.show_response_status((None, error or 'Failed to download! Check the terminal'), 'Download')
+        else:
+            self.show_response_status(("Successfully downloaded!", None), 'Download')
+        self.explorer.main_window.statusBar().showMessage('Done', 3000)
 
     def file_properties(self):
         info = f"<br/><u><b>{str(self.file)}</b></u><br/>"

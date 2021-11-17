@@ -1,9 +1,10 @@
-# ADB File Explorer `alpha v0.32`
+# ADB File Explorer `beta v0.4`
 
 <pre>
 Simple File explorer for ADB devices
-Allows you to see list of files on your device and 
-upload to/download it
+
+Allows you to see list of files on your device
+and upload to/download it
 </pre>
 
 <span style="color: yellow">
@@ -14,13 +15,11 @@ upload to/download it
 </span>
 
 ### Downloading
-<a href='https://github.com/Aldeshov/ADBFileExplorer/releases/tag/alpha-v0.32'>
+<a href='https://github.com/Aldeshov/ADBFileExplorer/releases/tag/beta-v0.4'>
 Download for Linux and Windows<br/>
 </a>
 
 ## Screenshots
-* About program <br/>
-![About, screenshot](previews/about.png)
 * Devices screen <br/>
 ![Devices, screenshot](previews/devices.png)
 * Files screen <br/>
@@ -59,7 +58,7 @@ At the moment works features like:
 in the device
 </span>
 
-## Inroduction to the code
+## Introduction to the code
 
 <pre>
 Project main packages are:
@@ -71,9 +70,5 @@ Folder <b>SERVICES</b> contains files that runs subprocesses and gets data from 
 
 The most editable file is <i>drivers.py</i>
 it tries to get data from adb command, and converts it to models
-At the moment, this file needs to be checked for operability on various types of devices.
-</pre>
-
-<pre>
-P.S. Further development depends on my free time
+At the moment, this file needs to be checked for issues on various types of devices.
 </pre>

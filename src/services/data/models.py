@@ -174,7 +174,7 @@ class Communicate(QObject):
 
     up = QtCore.pyqtSignal()
     files__refresh = QtCore.pyqtSignal()
-    pathtoolbar__refresh = QtCore.pyqtSignal()
+    path_toolbar__refresh = QtCore.pyqtSignal()
 
 
 class Global:

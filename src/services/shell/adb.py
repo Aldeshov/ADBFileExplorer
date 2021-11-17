@@ -1,4 +1,4 @@
-from services.shell.process import ShellProcessResponse
+from services.shell.process import ShellProcessResponse, LiveShellProcessObserver
 
 ADB = 'adb'
 
@@ -10,6 +10,7 @@ class Parameter:
     SHELL = 'shell'
     CONNECT = 'connect'
     HELP = '--help'
+    VERSION = '--version'
     DEVICES = 'devices'
     START_SERVER = 'start-server'
     KILL_SERVER = 'kill-server'
@@ -17,29 +18,29 @@ class Parameter:
 
 class ShellCommand:
     LS = 'ls'
+    LS_ALL = [LS, '-a']
+    LS_DIRS = [LS, '-d']
     LS_LIST = [LS, '-l']
+    LS_LIST_DIRS = [LS, '-l', '-d']
+    LS_ALL_DIRS = [LS, '-a', '-d']
+    LS_ALL_LIST = [LS, '-a', '-l']
+    LS_ALL_LIST_DIRS = [LS, '-a', '-l', '-d']
     LS_VERSION = [LS, '--version']
-    LS_FULL_LIST = [LS, '-l', '-a']
-    LS_FILE_INFO = [LS, '-l', '-d']
 
     GETPROP = 'getprop'
     GETPROP_PRODUCT_MODEL = [GETPROP, 'ro.product.model']
 
     MKDIR = 'mkdir'
 
-    CP = 'cp'
-
-    MV = 'mv'
-
 
 def validate():
-    validation = version().Successfull
+    validation = version().Successful
     message = "ADB not found!"
     assert validation, message
 
 
 def version():
-    args = [ADB, Parameter.HELP]
+    args = [ADB, Parameter.VERSION]
     return ShellProcessResponse(args)
 
 
@@ -71,6 +72,16 @@ def pull(device_id: str, source_path: str, destination_path: str):
 def push(device_id: str, source_path: str, destination_path: str):
     args = [ADB, Parameter.DEVICE, device_id, Parameter.PUSH, source_path, destination_path]
     return ShellProcessResponse(args)
+
+
+def pull__live(device_id: str, source_path: str, destination_path: str):
+    args = [ADB, Parameter.DEVICE, device_id, Parameter.PULL, source_path, destination_path]
+    return LiveShellProcessObserver(args)
+
+
+def push__live(device_id: str, source_path: str, destination_path: str):
+    args = [ADB, Parameter.DEVICE, device_id, Parameter.PUSH, source_path, destination_path]
+    return LiveShellProcessObserver(args)
 
 
 def shell(device_id: str, args: list):

@@ -1,7 +1,19 @@
 import shlex
 import subprocess
+import sys
+import threading
+
+from PyQt5 import QtCore
+from PyQt5.QtCore import QObject
 
 from services.data.models import Singleton
+
+
+class ProcessRunType:
+    UNKNOWN = -1
+    SUCCESSFUL = 0
+    FILE_NOTFOUND = 1
+    KEYBOARD_INTERRUPT = 2
 
 
 class ShellProcess:
@@ -19,11 +31,11 @@ class ShellProcess:
                 stderr=subprocess.PIPE,
                 shell=True
             )
-            return ProcessRunType.SUCCESSFULL
+            return ProcessRunType.SUCCESSFUL
         except KeyboardInterrupt:
-            return ProcessRunType.KEYBOARDINTERRUPT
+            return ProcessRunType.KEYBOARD_INTERRUPT
         except FileNotFoundError:
-            return ProcessRunType.FILENOTFOUND
+            return ProcessRunType.FILE_NOTFOUND
 
     @classmethod
     def data(cls):
@@ -41,7 +53,7 @@ class ShellProcess:
             return cls.__process.returncode
 
     @classmethod
-    def successfull(cls):
+    def successful(cls):
         if cls.__process:
             try:
                 cls.__process.check_returncode()
@@ -51,32 +63,92 @@ class ShellProcess:
 
 
 class ShellProcessResponse:
-    Successfull: bool
+    Successful: bool
     ExitCode: int
     OutputData: str
     ErrorData: str
 
     def __init__(self, args: list):
         run = ShellProcess.run(args)
-        if run == ProcessRunType.SUCCESSFULL:
-            self.Successfull = ShellProcess.successfull() is True
+        if run == ProcessRunType.SUCCESSFUL:
+            self.Successful = ShellProcess.successful() is True
             self.ExitCode = ShellProcess.code()
 
             self.ErrorData = ShellProcess.error()
             self.OutputData = ShellProcess.data()
-        elif run == ProcessRunType.FILENOTFOUND:
-            self.Successfull = False
+        elif run == ProcessRunType.FILE_NOTFOUND:
+            self.Successful = False
             self.ErrorData = 'ADB not Found! Please check adb'
-        elif run == ProcessRunType.KEYBOARDINTERRUPT:
-            self.Successfull = False
+        elif run == ProcessRunType.KEYBOARD_INTERRUPT:
+            self.Successful = False
             self.ErrorData = 'Process has been interrupted by keyboard!'
         else:
-            self.Successfull = False
+            self.Successful = False
             self.ErrorData = 'Unknown Error'
 
 
-class ProcessRunType:
-    UNKNOWN = -1
-    SUCCESSFULL = 0
-    FILENOTFOUND = 1
-    KEYBOARDINTERRUPT = 2
+class LiveShellProcess:
+    __metaclass__ = Singleton
+
+    __process: subprocess.Popen
+
+    @classmethod
+    def run(cls, args: list):
+        try:
+            args = shlex.join(args)
+            cls.__process = subprocess.Popen(
+                args,
+                stdout=sys.stdout,
+                stderr=subprocess.PIPE,
+                shell=True
+            )
+            return ProcessRunType.SUCCESSFUL
+        except FileNotFoundError:
+            return ProcessRunType.FILE_NOTFOUND
+
+    @classmethod
+    def error(cls):
+        if cls.code() is not None and not cls.successful():
+            return cls.__process.communicate()[1].decode()
+
+    @classmethod
+    def code(cls):
+        if cls.__process:
+            return cls.__process.poll()
+
+    @classmethod
+    def successful(cls):
+        return cls.code() == 0
+
+
+class LiveShellProcessObserver(QObject):
+    Running: bool
+    ExitCode: int
+    ErrorData: str
+
+    __process_completed = QtCore.pyqtSignal(int, str)
+
+    def __init__(self, args: list):
+        super(LiveShellProcessObserver, self).__init__()
+        run = LiveShellProcess.run(args)
+        if run == ProcessRunType.SUCCESSFUL:
+            self.Running = True
+        elif run == ProcessRunType.FILE_NOTFOUND:
+            self.Running = False
+            self.ErrorData = 'ADB not Found! Please check adb'
+        else:
+            self.Running = False
+            self.ErrorData = 'Unknown Error'
+
+    def observe(self, async_fun=None) -> bool:
+        if async_fun:
+            self.__process_completed.connect(async_fun)
+        self.ExitCode = LiveShellProcess.code()
+        self.ErrorData = LiveShellProcess.error()
+        self.Running = self.ExitCode is None
+
+        if self.Running:
+            threading.Timer(0.25, self.observe).start()
+            return True
+        self.__process_completed.emit(self.ExitCode, self.ErrorData)
+        return False

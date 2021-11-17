@@ -8,7 +8,7 @@ from services.shell import adb
 
 def get_devices() -> (List[Device], str):
     response = adb.devices()
-    if not response.Successfull:
+    if not response.Successful:
         return [], response.ErrorData or response.OutputData
 
     lines = response.OutputData.split()
@@ -22,7 +22,7 @@ def get_devices() -> (List[Device], str):
         device_type = lines[i * 2 - 1]
         response_name = adb.shell(device_id, adb.ShellCommand.GETPROP_PRODUCT_MODEL)
         device_name = 'Unknown Device'
-        if response_name.Successfull and response_name.OutputData is not None:
+        if response_name.Successful and response_name.OutputData is not None:
             device_name = response_name.OutputData.strip()
         device = Device(
             id=device_id,
@@ -35,7 +35,7 @@ def get_devices() -> (List[Device], str):
 
 def connect(device_id: str) -> (str, str):
     response = adb.connect(device_id)
-    if not response.Successfull:
+    if not response.Successful:
         return None, response.ErrorData or response.OutputData
 
     return response.OutputData, None
@@ -43,7 +43,7 @@ def connect(device_id: str) -> (str, str):
 
 def download_path(devices_id: str, source_path: str, destination_path: str) -> (str, str):
     response = adb.pull(devices_id, source_path, destination_path)
-    if not response.Successfull:
+    if not response.Successful:
         return None, response.ErrorData or response.OutputData
     lines = __lines_from_data(response.OutputData)
     return lines[len(lines) - 1], None
@@ -51,17 +51,27 @@ def download_path(devices_id: str, source_path: str, destination_path: str) -> (
 
 def upload_path(devices_id: str, source_path: str, destination_path: str) -> (str, str):
     response = adb.push(devices_id, source_path, destination_path)
-    if not response.Successfull:
+    if not response.Successful:
         return None, response.ErrorData or response.OutputData
 
     lines = __lines_from_data(response.OutputData)
     return lines[len(lines) - 1], None
 
 
+def download_path__live(devices_id: str, source_path: str, destination_path: str, async_fun) -> bool:
+    observer = adb.pull__live(devices_id, source_path, destination_path)
+    return observer.observe(async_fun)
+
+
+def upload_path__live(devices_id: str, source_path: str, destination_path: str, async_fun) -> bool:
+    observer = adb.push__live(devices_id, source_path, destination_path)
+    return observer.observe(async_fun)
+
+
 def create_folder(device_id: str, new_path: str) -> (str, str):
-    args = [adb.ShellCommand.MKDIR, new_path]
+    args = [adb.ShellCommand.MKDIR, new_path.replace(' ', r"\ ")]
     response = adb.shell(device_id, args)
-    if not response.Successfull:
+    if not response.Successful:
         return None, response.ErrorData or response.OutputData
 
     return response.OutputData, response.ErrorData
@@ -74,9 +84,9 @@ def get_file(device_id: str, path: str) -> (File, str):
     if not path:
         path = '/'
 
-    args = adb.ShellCommand.LS_FILE_INFO + [path.replace(' ', r"\ ")]
+    args = adb.ShellCommand.LS_LIST_DIRS + [path.replace(' ', r"\ ")]
     response = adb.shell(device_id, args)
-    if not response.Successfull:
+    if not response.Successful:
         return None, response.ErrorData or response.OutputData
 
     lines = __lines_from_data(response.OutputData)
@@ -101,39 +111,86 @@ def get_files(device_id, path) -> (List[File], str):
 
 # command: adb -s <device_id> shell ls -a -l <path>
 def get_files__adb_shell_ls(device_id, path) -> (List[File], str):
-    args = adb.ShellCommand.LS_FULL_LIST + [path.replace(' ', r"\ ")]
-    response = adb.shell(device_id, args)
-    if not response.Successfull and response.ExitCode != 1:
-        return [], response.ErrorData or response.OutputData
+    args = adb.ShellCommand.LS_ALL_LIST + [path.replace(' ', r"\ ")]
+    response_full = adb.shell(device_id, args)
+    if not response_full.Successful and response_full.ExitCode != 1:
+        return [], response_full.ErrorData or response_full.OutputData
 
-    lines = __lines_from_data(response.OutputData)
+    lines = __lines_from_data(response_full.OutputData)
     if not lines:
-        return [], response.ErrorData
+        return [], response_full.ErrorData
+
+    args = adb.ShellCommand.LS_ALL_DIRS + [path.replace(' ', r"\ ") + "*/"]
+    response_dirs = adb.shell(device_id, args)
+    if not response_dirs.Successful and response_dirs.ExitCode != 1:
+        return [], response_dirs.ErrorData or response_dirs.OutputData
+
+    dirs = __lines_from_data(response_dirs.OutputData)
+
     if lines[0].startswith('total'):
         lines = lines[1:]  # Skip first line: total x
 
-    check = lines[0]
     files = []
-    if re.fullmatch(r'[-dlcbsp][-rwxst]{9}\s+\d+\s+\S+\s+\S+\s*\d*,?\s+\d+\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+', check):
-        pattern = r'[-dlcbsp][-rwxst]{9}\s+\d+\s+\S+\s+\S+\s*\d*,?\s+\d+\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+'
-        for line in lines[2:]:
-            if re.fullmatch(pattern, line):
-                files.append(__converter_to_file_version2(line, path=path, device_id=device_id))
-        return files, None
+    for line in lines:
+        re__permission = re.search(r'[-dlcbsp][-rwxst]{9}', line)
+        re__size_datetime_name = re.search(r'\d* \d{4}-\d{2}-\d{2} \d{2}:\d{2} .+', line)
+        if re__permission and re__size_datetime_name:
+            size_date_name = re__size_datetime_name[0].split(' ')
+            if len(size_date_name) == 4 and size_date_name[3] == '.':
+                continue
+            elif len(size_date_name) == 4 and size_date_name[3] == '..':
+                continue
 
-    elif re.fullmatch(r'[-dlcbsp][-rwxst]{9}\s+\S+\s+\S+\s*\d*,?\s*\d*\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+', check):
-        pattern = r'[-dlcbsp][-rwxst]{9}\s+\S+\s+\S+\s*\d*,?\s*\d*\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+'
-        for line in lines:
-            if re.fullmatch(pattern, line):
-                files.append(__converter_to_file_version1(line, path=path, device_id=device_id))
-        return files, None
-    return [], response.ErrorData or response.OutputData
+            permission = re__permission[0]
+            size = int(size_date_name[0] or 0)
+            date_time = datetime.datetime.strptime(
+                f"{size_date_name[1]} {size_date_name[2]}",
+                '%Y-%m-%d %H:%M'
+            )
+            names = size_date_name[3:]
+            if permission[0] == 'l':
+                name = " ".join(names[:names.index('->')])
+                link = " ".join(names[names.index('->') + 1:])
+                link_type = FileTypes.FILE
+                if dirs.__contains__(f"{path}{name}/"):
+                    link_type = FileTypes.DIRECTORY
+                files.append(
+                    File(
+                        name=name,
+                        size=size,
+                        path=path,
+                        link=link,
+                        link_type=link_type,
+                        date_time=date_time,
+                        permissions=permission,
+                    )
+                )
+            else:
+                name = " ".join(names)
+                files.append(
+                    File(
+                        name=name,
+                        size=size,
+                        path=path,
+                        date_time=date_time,
+                        permissions=permission,
+                    )
+                )
+            continue
+        continue
+
+    if not files:
+        return [], response_full.ErrorData
+
+    if response_full.ErrorData:
+        print(response_full.ErrorData)
+    return files, None
 
 
 # command: adb -s <device_id> ls <path>
 def get_files__adb_ls(device_id: str, path: str) -> (List[File], str):
     response = adb.file_list(device_id, path)
-    if not response.Successfull:
+    if not response.Successful:
         return [], response.ErrorData or response.OutputData
 
     if not response.OutputData:
@@ -150,21 +207,16 @@ def get_files__adb_ls(device_id: str, path: str) -> (List[File], str):
     return files, None
 
 
-# Private tool clear function for dataline filter
-def __clear(dataline) -> bool:
-    return bool(dataline)
-
-
 # Private tool for getting lines list from data
 def __lines_from_data(data: str, separator=r'\n') -> list:
     if not data:
         return list()
 
     lines = re.split(separator, data)
-    for i, line in enumerate(lines):
+    for index, line in enumerate(lines):
         regex = re.compile(r'[\r\t]')
-        lines[i] = regex.sub('', lines[i])
-    filtered = filter(__clear, lines)
+        lines[index] = regex.sub('', lines[index])
+    filtered = filter(bool, lines)
     return list(filtered)
 
 
@@ -175,10 +227,10 @@ def __get_link_type(device_id: str, path: str, name: str) -> str:
         return FileTypes.UNKNOWN
 
     full_path = f"{path}{name}/"
-    args = adb.ShellCommand.LS_FILE_INFO + [full_path.replace(' ', r"\ ")]
+    args = adb.ShellCommand.LS_ALL_DIRS + [full_path.replace(' ', r"\ ")]
     response = adb.shell(device_id, args)
 
-    if not response.Successfull or not response.OutputData:
+    if not response.Successful or not response.OutputData:
         return FileTypes.UNKNOWN
 
     if response.OutputData.startswith('d'):
@@ -189,10 +241,10 @@ def __get_link_type(device_id: str, path: str, name: str) -> str:
 
 
 # Line Converter (to File()) - version 1 (old)
-# dataline must be exact to regex:
+# data line must be exact to regex:
 # r'[-dlcbsp][-rwxst]{9}\s+\S+\s+\S+\s*\d*,?\s*\d*\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+'
-def __converter_to_file_version1(dataline: str, **kwargs) -> File:
-    fields = dataline.split()
+def __converter_to_file_version1(data_line: str, **kwargs) -> File:
+    fields = data_line.split()
     date_pattern = '%Y-%m-%d %H:%M'
 
     size = 0
@@ -244,10 +296,10 @@ def __converter_to_file_version1(dataline: str, **kwargs) -> File:
 
 
 # Line Converter (to File()) - version 2 (newer)
-# dataline must be exact to regex:
+# data line must be exact to regex:
 # r'[-dlcbsp][-rwxst]{9}\s+\d+\s+\S+\s+\S+\s*\d*,?\s+\d+\s+\d{4}-\d{2}-\d{2} \d{2}:\d{2} .+'
-def __converter_to_file_version2(dataline: str, **kwargs) -> File:
-    fields = dataline.split()
+def __converter_to_file_version2(data_line: str, **kwargs) -> File:
+    fields = data_line.split()
     date_pattern = '%Y-%m-%d %H:%M'
 
     size = 0
@@ -297,11 +349,11 @@ def __converter_to_file_version2(dataline: str, **kwargs) -> File:
 
 
 # Line Converter (to File()) - default
-# sample dataline
+# sample data line
 #  <hex>   <hex>   <hex>
 # 000041ed 00001000 051c97ed <filename>
-def __converter_to_file_default(dataline: str, **kwargs) -> File:
-    fields = dataline.split()
+def __converter_to_file_default(data_line: str, **kwargs) -> File:
+    fields = data_line.split()
     octal = oct(int(fields[0], 16))[2:]
 
     size = int(fields[1], 16)

@@ -6,7 +6,8 @@ from PyQt5.QtWidgets import QWidget, QScrollArea, QVBoxLayout, QFileDialog, QHBo
 from gui.abstract.base import BaseResponsePopup
 from gui.explorer.devices import DeviceHeaderWidget, DeviceListWidget
 from gui.explorer.files import FileHeaderWidget, FileListWidget
-from config import Asset
+from config import Resource
+from gui.others.additional import LoadingWidget
 from services.data.managers import FileManager
 from services.data.models import Global
 from services.data.repositories import FileRepository
@@ -34,7 +35,8 @@ class FileExplorerToolbar(BaseResponsePopup):
         self.setLayout(self.layout)
 
         self.upload = QComboBox(self)
-        self.upload.addItem(QIcon(Asset.icon_plus), 'Upload...')
+        self.upload.setFixedHeight(32)
+        self.upload.addItem(QIcon(Resource.icon_plus), 'Upload...')
         self.upload.addItem(self.Action.upload_files)
         self.upload.addItem(self.Action.upload_directory)
         self.upload.addItem(self.Action.create_folder)
@@ -44,27 +46,34 @@ class FileExplorerToolbar(BaseResponsePopup):
         self.upload.setSizePolicy(policy)
         self.layout.addWidget(self.upload)
 
-        self.parent_dir = QPushButton(QIcon(Asset.icon_up), None, self)
+        self.parent_dir = QPushButton(QIcon(Resource.icon_up), None, self)
+        self.parent_dir.setFixedHeight(32)
         self.parent_dir.clicked.connect(self.__action_go_to_parent)
         self.parent_dir.setShortcut('Escape')
         policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         policy.setHorizontalStretch(1)
         self.parent_dir.setSizePolicy(policy)
+        # noinspection PyTypeChecker
+        # QPushButton is QWidget type
         self.layout.addWidget(self.parent_dir)
 
         self.path = PathBar(self)
+        self.path.setFixedHeight(32)
         policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         policy.setHorizontalStretch(8)
         self.path.setSizePolicy(policy)
         self.layout.addWidget(self.path)
         self.path.returnPressed.connect(self.__action_go)
-        Global().communicate.pathtoolbar__refresh.connect(self.__update_path)
+        Global().communicate.path_toolbar__refresh.connect(self.__update_path)
 
-        self.go = QPushButton(QIcon(Asset.icon_go), None, self)
+        self.go = QPushButton(QIcon(Resource.icon_go), None, self)
+        self.go.setFixedHeight(32)
         policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         policy.setHorizontalStretch(1)
         self.parent_dir.setSizePolicy(policy)
         self.go.clicked.connect(self.__action_go)
+        # noinspection PyTypeChecker
+        # QPushButton is QWidget type
         self.layout.addWidget(self.go)
 
     def __update_path(self):
@@ -79,7 +88,7 @@ class FileExplorerToolbar(BaseResponsePopup):
         file, error = FileRepository.file(path)
         if error:
             QMessageBox.critical(self, 'Go to folder', error)
-            Global().communicate.pathtoolbar__refresh.emit()
+            Global().communicate.path_toolbar__refresh.emit()
         elif file and FileManager.go(file):
             Global().communicate.files__refresh.emit()
         else:
@@ -87,40 +96,45 @@ class FileExplorerToolbar(BaseResponsePopup):
 
     def __action_upload(self, item):
         if item == self.Action.upload_files:
-            self.explorer.mainwindow.statusBar().showMessage('Files uploading... Please wait')
             file_names = QFileDialog.getOpenFileNames(self, 'Select files', '~')[0]
-            self.explorer.mainwindow.statusBar().showMessage('Files not selected')
+            self.explorer.main_window.statusBar().showMessage('Files not selected')
 
             if file_names:
-                response = FileRepository.upload_files(file_names)
-                self.show_response_status(response, 'Upload files')
-
-                Global().communicate.files__refresh.emit()
-                self.explorer.mainwindow.statusBar().showMessage('Done')
+                self.explorer.main_window.statusBar().showMessage('Uploading files...')
+                FileRepository.upload_files(file_names, self.__uploaded)
+                self.explorer.loading_upload.show()
 
         elif item == self.Action.upload_directory:
-            self.explorer.mainwindow.statusBar().showMessage('Directory uploading... Please wait')
             dir_name = QFileDialog.getExistingDirectory(self, 'Select directory', '~')
-            self.explorer.mainwindow.statusBar().showMessage('Directory not selected')
+            self.explorer.main_window.statusBar().showMessage('Directory not selected')
 
             if dir_name:
-                response = FileRepository.upload_directory(dir_name)
-                self.show_response_status(response, 'Upload directory')
-
-                Global().communicate.files__refresh.emit()
-                self.explorer.mainwindow.statusBar().showMessage('Done')
+                self.explorer.main_window.statusBar().showMessage('Uploading directory...')
+                FileRepository.upload_directory(dir_name, self.__uploaded)
+                self.explorer.loading_upload.show()
 
         elif item == self.Action.create_folder:
-            self.explorer.mainwindow.statusBar().showMessage('Creating folder...')
+            self.explorer.main_window.statusBar().showMessage('Creating folder...')
             text, ok = QInputDialog.getText(self, 'New folder', 'Enter new folder name:')
+
             if ok:
                 response = FileRepository.new_folder(text)
                 self.show_response_status(response, 'New folder')
 
                 Global().communicate.files__refresh.emit()
-                self.explorer.mainwindow.statusBar().showMessage('Done')
+                self.explorer.main_window.statusBar().showMessage('Done')
 
         self.upload.setCurrentIndex(0)
+
+    def __uploaded(self, code, error):
+        self.explorer.loading_upload.close()
+        if error or code != 0:
+            self.show_response_status((None, error or 'Failed to upload! Check the terminal'), 'Upload')
+        else:
+            self.show_response_status(("Successfully uploaded!", None), 'Upload')
+        self.explorer.main_window.statusBar().showMessage('Done')
+
+        Global().communicate.files__refresh.emit()
 
     @staticmethod
     def __action_go_to_parent():
@@ -129,9 +143,9 @@ class FileExplorerToolbar(BaseResponsePopup):
 
 
 class Explorer(QWidget):
-    def __init__(self, mainwindow):
+    def __init__(self, main_window):
         super().__init__()
-        self.mainwindow = mainwindow
+        self.main_window = main_window
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
@@ -141,6 +155,8 @@ class Explorer(QWidget):
         self.scroll = QScrollArea(self)
         self.scroll.setLineWidth(self.width())
         self.scroll.setWidgetResizable(True)
+        self.loading_upload = LoadingWidget(self, 'Uploading...')
+        self.loading_download = LoadingWidget(self, 'Downloading...')
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         Global().communicate.files.connect(self.files)
@@ -148,7 +164,7 @@ class Explorer(QWidget):
 
     def __update_files(self):
         self.scroll.widget().update()
-        Global().communicate.pathtoolbar__refresh.emit()
+        Global().communicate.path_toolbar__refresh.emit()
 
     def files(self):
         self.clear()
