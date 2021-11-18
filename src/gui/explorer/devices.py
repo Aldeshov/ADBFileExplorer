@@ -1,9 +1,10 @@
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMessageBox
 
 from gui.abstract.base import BaseListWidget, BaseListItemWidget, BaseListHeaderWidget
 from config import Resource
-from services.data.managers import FileManager
-from services.data.models import Device, Global, DeviceTypes
+from services.data.managers import FileManager, Global
+from services.data.models import Device, DeviceType
 from services.data.repositories import DeviceRepository
 
 
@@ -18,13 +19,10 @@ class DeviceHeaderWidget(BaseListHeaderWidget):
 
 class DeviceListWidget(BaseListWidget):
     def __init__(self):
-        super().__init__()
-        self.devices_widgets()
-
-    def devices_widgets(self):
+        super(DeviceListWidget, self).__init__()
         devices, error = DeviceRepository.devices()
         if error:
-            self.show_response_error('Devices', error)
+            QMessageBox.critical(self, 'Devices', error)
 
         widgets = []
         for device in devices:
@@ -35,9 +33,9 @@ class DeviceListWidget(BaseListWidget):
 
 class DeviceItemWidget(BaseListItemWidget):
     def __init__(self, device: Device):
-        super().__init__()
+        super(DeviceItemWidget, self).__init__()
         self.device = device
-        if device.type == DeviceTypes.DEVICE:
+        if device.type == DeviceType.DEVICE:
             self.layout.addWidget(self.icon(Resource.icon_phone))
         else:
             self.layout.addWidget(self.icon(Resource.icon_unknown))
@@ -48,6 +46,6 @@ class DeviceItemWidget(BaseListItemWidget):
     def mouseReleaseEvent(self, event):
         super(DeviceItemWidget, self).mouseReleaseEvent(event)
 
-        if event.button() == Qt.LeftButton and self.device.type == DeviceTypes.DEVICE:
+        if event.button() == Qt.LeftButton and self.device.type == DeviceType.DEVICE:
             FileManager.set_device(self.device.id)
             Global().communicate.files.emit()

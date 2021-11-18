@@ -1,10 +1,13 @@
+import sys
+
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
+from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QWidget
 
 from config import Resource
 from gui.abstract.base import BaseListItemWidget, BaseListWidget, BaseListHeaderWidget
-from services.data.managers import FileManager
-from services.data.models import File, FileTypes, Global
+from gui.others.additional import LoadingWidget
+from services.data.managers import FileManager, Global
+from services.data.models import File, FileType
 from services.data.repositories import FileRepository
 
 
@@ -33,16 +36,14 @@ class FileListWidget(BaseListWidget):
     def __init__(self, explorer):
         super(FileListWidget, self).__init__()
         self.explorer = explorer
-        self.files_widgets()
 
     def update(self):
         super(FileListWidget, self).update()
-        self.files_widgets()
-
-    def files_widgets(self):
         files, error = FileRepository.files()
         if error:
-            self.show_response_error('Files', error)
+            print(error, file=sys.stderr)
+        if error and not files:
+            QMessageBox.critical(self, 'Files', error)
         Global().communicate.path_toolbar__refresh.emit()
 
         widgets = []
@@ -57,6 +58,7 @@ class FileItemWidget(BaseListItemWidget):
         super(FileItemWidget, self).__init__()
         self.file = file
         self.explorer = explorer
+        self.loading = QWidget()
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
@@ -87,21 +89,21 @@ class FileItemWidget(BaseListItemWidget):
         )
 
         self.setToolTip(self.file.name)
-        if self.file.type == FileTypes.LINK:
+        if self.file.type == FileType.LINK:
             self.setToolTip(self.file.link)
 
     @property
     def icon_path(self):
-        if self.file.type == FileTypes.DIRECTORY:
+        if self.file.type == FileType.DIRECTORY:
             return Resource.icon_folder
-        elif self.file.type == FileTypes.FILE:
+        elif self.file.type == FileType.FILE:
             return Resource.icon_file
-        elif self.file.type == FileTypes.LINK:
-            if self.file.link_type == FileTypes.DIRECTORY:
+        elif self.file.type == FileType.LINK:
+            if self.file.link_type == FileType.DIRECTORY:
                 return Resource.icon_link_folder
-            elif self.file.link_type == FileTypes.FILE:
+            elif self.file.link_type == FileType.FILE:
                 return Resource.icon_link_file
-            return Resource.icon_link_file_universal
+            return Resource.icon_link_file_unknown
         return Resource.icon_file_unknown
 
     def mouseReleaseEvent(self, event):
@@ -148,26 +150,24 @@ class FileItemWidget(BaseListItemWidget):
         menu.exec(self.mapToGlobal(pos))
 
     def download(self):
-        self.explorer.main_window.statusBar().showMessage('Downloading...')
-        FileRepository.download(self.file.full_path, self.__downloaded)
-        self.explorer.loading_download.show()
+        self.loading = LoadingWidget(self, 'Downloading... Please wait')
+        FileRepository.download(self.file.path, self.__download__)
 
     def download_to(self):
         dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
-        self.explorer.main_window.statusBar().showMessage('Canceled.', 3000)
 
         if dir_name:
-            self.explorer.main_window.statusBar().showMessage('Downloading...')
-            FileRepository.download_to(self.file.full_path, dir_name, self.__downloaded)
-            self.explorer.loading_download.show()
+            self.loading = LoadingWidget(self, 'Downloading... Please wait')
+            FileRepository.download_to(self.file.path, dir_name, self.__download__)
 
-    def __downloaded(self, code, error):
-        self.explorer.loading_download.close()
+    def __download__(self, code, error):
+        self.loading.close()
+        del self.loading
+
         if error or code != 0:
-            self.show_response_status((None, error or 'Failed to download! Check the terminal'), 'Download')
+            QMessageBox.critical(self, 'Download', error or 'Failed to download! Check the terminal')
         else:
-            self.show_response_status(("Successfully downloaded!", None), 'Download')
-        self.explorer.main_window.statusBar().showMessage('Done', 3000)
+            QMessageBox.information(self, 'Download', "Successfully downloaded!")
 
     def file_properties(self):
         info = f"<br/><u><b>{str(self.file)}</b></u><br/>"
@@ -176,10 +176,10 @@ class FileItemWidget(BaseListItemWidget):
         info += f"<pre>Group:       {self.file.group or '-'}</pre>"
         info += f"<pre>Size:        {self.file.size or '-'}</pre>"
         info += f"<pre>Permissions: {self.file.permissions or '-'}</pre>"
-        info += f"<pre>Date:        {self.file.date_raw or '-'}</pre>"
+        info += f"<pre>Date:        {self.file.date__raw or '-'}</pre>"
         info += f"<pre>Type:        {self.file.type or '-'}</pre>"
 
-        if self.file.type == FileTypes.LINK:
+        if self.file.type == FileType.LINK:
             info += f"<pre>Links to:    {self.file.link or '-'}</pre>"
 
         QMessageBox.information(self, 'Properties', info)

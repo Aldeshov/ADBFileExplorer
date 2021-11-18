@@ -1,6 +1,9 @@
-from services.shell.process import ShellProcessResponse, LiveShellProcessObserver
+import typing
 
-ADB = 'adb'
+from config import Settings, Default
+from services.shell.process import Process, ObservableProcess
+
+__ADB__ = Settings.adb__custom_path_value if Settings.adb__custom_path_enabled else Default.adb_path
 
 
 class Parameter:
@@ -35,60 +38,43 @@ class ShellCommand:
 
 def validate():
     validation = version().Successful
-    message = "ADB not found!"
+    message = version().ErrorData
     assert validation, message
 
 
 def version():
-    args = [ADB, Parameter.VERSION]
-    return ShellProcessResponse(args)
+    return Process([__ADB__, Parameter.VERSION])
 
 
 def devices():
-    args = [ADB, Parameter.DEVICES]
-    return ShellProcessResponse(args)
+    return Process([__ADB__, Parameter.DEVICES])
 
 
 def start_server():
-    args = [ADB, Parameter.START_SERVER]
-    return ShellProcessResponse(args)
+    return Process([__ADB__, Parameter.START_SERVER])
 
 
 def kill_server():
-    args = [ADB, Parameter.KILL_SERVER]
-    return ShellProcessResponse(args)
+    return Process([__ADB__, Parameter.KILL_SERVER])
 
 
 def connect(device_id: str):
-    args = [ADB, Parameter.CONNECT, device_id]
-    return ShellProcessResponse(args)
+    return Process([__ADB__, Parameter.CONNECT, device_id])
 
 
-def pull(device_id: str, source_path: str, destination_path: str):
-    args = [ADB, Parameter.DEVICE, device_id, Parameter.PULL, source_path, destination_path]
-    return ShellProcessResponse(args)
+def pull(device_id: str, source_path: str, destination_path: str, async_fun: typing.Callable):
+    args = [__ADB__, Parameter.DEVICE, device_id, Parameter.PULL, source_path, destination_path]
+    return ObservableProcess(args, async_fun)
 
 
-def push(device_id: str, source_path: str, destination_path: str):
-    args = [ADB, Parameter.DEVICE, device_id, Parameter.PUSH, source_path, destination_path]
-    return ShellProcessResponse(args)
-
-
-def pull__live(device_id: str, source_path: str, destination_path: str):
-    args = [ADB, Parameter.DEVICE, device_id, Parameter.PULL, source_path, destination_path]
-    return LiveShellProcessObserver(args)
-
-
-def push__live(device_id: str, source_path: str, destination_path: str):
-    args = [ADB, Parameter.DEVICE, device_id, Parameter.PUSH, source_path, destination_path]
-    return LiveShellProcessObserver(args)
+def push(device_id: str, source_path: str, destination_path: str, async_fun: typing.Callable):
+    args = [__ADB__, Parameter.DEVICE, device_id, Parameter.PUSH, source_path, destination_path]
+    return ObservableProcess(args, async_fun)
 
 
 def shell(device_id: str, args: list):
-    args = [ADB, Parameter.DEVICE, device_id, Parameter.SHELL] + args
-    return ShellProcessResponse(args)
+    return Process([__ADB__, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
 
 
 def file_list(device_id: str, path: str):
-    args = [ADB, Parameter.DEVICE, device_id, ShellCommand.LS, path]
-    return ShellProcessResponse(args)
+    return Process([__ADB__, Parameter.DEVICE, device_id, ShellCommand.LS, path])

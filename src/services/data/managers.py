@@ -1,4 +1,4 @@
-from services.data.models import File, Singleton
+from services.data.models import File, Singleton, Communicate
 
 
 class FileManager:
@@ -7,7 +7,6 @@ class FileManager:
     __DEVICE = None
 
     __PATH = []
-    __HISTORY = []
 
     @classmethod
     def path(cls):
@@ -31,11 +30,8 @@ class FileManager:
     def go(cls, file: File):
         if file.isdir and file.location:
             cls.__PATH.clear()
-            for name in file.location.split('/'):
-                if name:
-                    cls.__PATH.append(name)
-            if file.name:
-                cls.__PATH.append(file.name)
+            for name in file.path.split('/'):
+                cls.__PATH.append(name) if name else ''
             return True
         return False
 
@@ -59,4 +55,18 @@ class FileManager:
     def clear_device(cls):
         cls.__DEVICE = None
         cls.__PATH.clear()
-        cls.__HISTORY.clear()
+
+    @staticmethod
+    def clear_path(path: str) -> str:
+        result = ''
+        array = path.split('/')
+        for name in array:
+            result += f'/{name}' if name else ''
+        if not result:
+            return '/'
+        return result
+
+
+class Global:
+    __metaclass__ = Singleton
+    communicate = Communicate()

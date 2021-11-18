@@ -1,73 +1,111 @@
+import typing
 from typing import List
 
-from services.data.drivers import get_files, get_file, get_devices, connect, create_folder, \
-    download_path__live, upload_path__live
+from services.data.drivers import convert_to_devices, convert_to_file, convert_to_file_list_a, convert_to_lines
 from services.data.managers import FileManager
-from services.data.models import File, Device
-from services.settings import default_download_path, copy_files_to_temp
+from services.data.models import File, Device, FileType
+from services.settings import default_download_path
+from services.shell import adb
 
 
 class FileRepository:
     @classmethod
-    def file(cls, path) -> (File, str):
-        return get_file(FileManager.get_device(), path)
+    def file(cls, path: str) -> (File, str):
+        if not FileManager.get_device() or not path:
+            return None, "Invalid arguments"
+
+        path = FileManager.clear_path(path)
+        args = adb.ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ')]
+        response = adb.shell(FileManager.get_device(), args)
+        if not response.Successful:
+            return None, response.ErrorData or response.OutputData
+
+        file = convert_to_file(response.OutputData.strip())
+        if file.type == FileType.LINK:
+            args = adb.ShellCommand.LS_ALL_DIRS + [path.replace(' ', r'\ ') + '/']
+            response = adb.shell(FileManager.get_device(), args)
+            file.link_type = FileType.UNKNOWN
+            if response.OutputData and response.OutputData.startswith('d'):
+                file.link_type = FileType.DIRECTORY
+            elif response.OutputData and response.OutputData.__contains__('Not a'):
+                file.link_type = FileType.FILE
+        file.path = path
+
+        if not file:
+            return None, response.ErrorData or response.OutputData
+        return file, response.ErrorData
 
     @classmethod
     def files(cls) -> (List[File], str):
-        return get_files(FileManager.get_device(), FileManager.path())
+        if not FileManager.get_device() or not FileManager.path():
+            return [], "Invalid arguments"
+        path = FileManager.path()
+        args = adb.ShellCommand.LS_ALL_LIST + [path.replace(' ', r'\ ')]
+        response = adb.shell(FileManager.get_device(), args)
+        if not response.Successful and response.ExitCode != 1:
+            return [], response.ErrorData or response.OutputData
 
-    # @classmethod
-    # def download(cls, source: str) -> (str, str):
-    #     return download_path(FileManager.get_device(), source, default_download_path())
-    #
-    # @classmethod
-    # def download_to(cls, source: str, destination: str) -> (str, str):
-    #     return download_path(FileManager.get_device(), source, destination)
+        if not response.OutputData:
+            return [], response.ErrorData
+
+        args = adb.ShellCommand.LS_ALL_DIRS + [path.replace(' ', r'\ ') + "*/"]
+        response_dirs = adb.shell(FileManager.get_device(), args)
+        if not response_dirs.Successful and response_dirs.ExitCode != 1:
+            return [], response_dirs.ErrorData or response_dirs.OutputData
+
+        dirs = convert_to_lines(response_dirs.OutputData)
+        files = convert_to_file_list_a(response.OutputData, dirs=dirs, path=path)
+        return files, response.ErrorData
 
     @classmethod
-    def download(cls, source: str, async_fun) -> bool:
-        return download_path__live(FileManager.get_device(), source, default_download_path(), async_fun)
+    def download(cls, source: str, async_fun: typing.Callable):
+        if FileManager.get_device() and source:
+            adb.pull(FileManager.get_device(), source, default_download_path(), async_fun)
 
     @classmethod
-    def download_to(cls, source: str, destination: str, async_fun) -> bool:
-        return download_path__live(FileManager.get_device(), source, destination, async_fun)
+    def download_to(cls, source: str, destination: str, async_fun: typing.Callable):
+        if FileManager.get_device() and source and destination:
+            adb.pull(FileManager.get_device(), source, destination, async_fun)
 
     @classmethod
     def new_folder(cls, name) -> (str, str):
-        path = f'{FileManager.path()}/{name}'
-        if FileManager.path().endswith('/'):
-            path = f'{FileManager.path()}{name}'
-        return create_folder(FileManager.get_device(), path)
+        if not FileManager.get_device() or not name:
+            return None, "Invalid arguments"
 
-    # @classmethod
-    # def upload_directory(cls, source: str) -> (str, str):
-    #     return upload_path(FileManager.get_device(), source, FileManager.path())
-    #
-    # @classmethod
-    # def upload_files(cls, sources: str) -> (str, str):
-    #     response_data, response_error = '', ''
-    #     for source in sources:
-    #         data, error = upload_path(FileManager.get_device(), source, FileManager.path())
-    #         if data:
-    #             response_data += f'{data}\n'
-    #         if error:
-    #             response_error += f'{error}\n'
-    #     return response_data, response_error
+        args = [adb.ShellCommand.MKDIR, f'{FileManager.path()}{name}'.replace(' ', r"\ ")]
+        response = adb.shell(FileManager.get_device(), args)
+        if not response.Successful:
+            return None, response.ErrorData or response.OutputData
+
+        return response.OutputData, response.ErrorData
 
     @classmethod
-    def upload_directory(cls, source: str, async_fun) -> bool:
-        return upload_path__live(FileManager.get_device(), source, FileManager.path(), async_fun)
-
-    @classmethod
-    def upload_files(cls, sources: list, async_fun) -> bool:
-        return upload_path__live(FileManager.get_device(), copy_files_to_temp(sources), FileManager.path(), async_fun)
+    def upload(cls, source: str, async_fun: typing.Callable):
+        if FileManager.get_device() and FileManager.path() and source:
+            adb.push(FileManager.get_device(), source, FileManager.path(), async_fun)
 
 
 class DeviceRepository:
     @classmethod
     def devices(cls) -> (List[Device], str):
-        return get_devices()
+        response = adb.devices()
+        if not response.Successful:
+            return [], response.ErrorData or response.OutputData
+
+        devices = convert_to_devices(response.OutputData)
+        for index, device in enumerate(devices):
+            response = adb.shell(device.id, adb.ShellCommand.GETPROP_PRODUCT_MODEL)
+            if response.Successful and response.OutputData is not None:
+                devices[index].name = response.OutputData.strip()
+        return devices, response.ErrorData
 
     @classmethod
     def connect(cls, device_id) -> (str, str):
-        return connect(device_id)
+        if not device_id:
+            return None, "Invalid arguments"
+
+        response = adb.connect(device_id)
+        if not response.Successful:
+            return None, response.ErrorData or response.OutputData
+
+        return response.OutputData, response.ErrorData

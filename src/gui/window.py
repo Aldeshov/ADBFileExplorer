@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QInputDialog, QMenuBar, 
 from gui.explorer.main import Explorer
 from gui.others.help import About
 from config import Resource
-from services.data.models import Global
+from services.data.managers import Global
 from services.data.repositories import DeviceRepository
 from services.shell import adb
 
@@ -75,4 +75,5 @@ class MainWindow(QMainWindow):
 
         if reply == QMessageBox.Yes:
             adb.kill_server()
+            print("ADB server stopped")
         event.accept()

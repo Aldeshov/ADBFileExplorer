@@ -25,7 +25,9 @@ class LoadingWidget(QWidget):
         self.text.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.text)
 
-        self.setFixedWidth(192)
-        self.setFixedHeight(192)
+        self.setMinimumWidth(192)
+        self.setMinimumHeight(192)
         self.setWindowModality(Qt.WindowModal)
         self.setWindowFlags(QtCore.Qt.Dialog | Qt.Window | Qt.CustomizeWindowHint)
+
+        self.show()

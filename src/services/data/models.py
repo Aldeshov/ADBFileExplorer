@@ -60,18 +60,17 @@ class Singleton(type):
 class File:
     def __init__(self, **kwargs):
         self.name: str = kwargs.get("name")
-        self.permissions: str = kwargs.get("permissions")
         self.owner: str = kwargs.get("owner")
         self.group: str = kwargs.get("group")
         self.other: str = kwargs.get("other")
+        self.path: str = kwargs.get("path")
+        self.link: str = kwargs.get("link")
+        self.link_type: str = kwargs.get("link_type")
         self.file_type: int = kwargs.get("file_type")
+        self.permissions: str = kwargs.get("permissions")
 
-        self.__path: str = kwargs.get("path")
-        self.__size: int = int(kwargs.get("size"))
+        self.__size: int = kwargs.get("size") or 0
         self.__date: datetime.datetime = kwargs.get("date_time")
-
-        self.__link: str = kwargs.get("link")
-        self.__link_type: str = kwargs.get("link_type")
 
     def __str__(self):
         return f"{self.name} at {self.location}"
@@ -109,24 +108,9 @@ class File:
             return f"{str(created.time())[:-3]}"
 
     @property
-    def link(self):
-        return self.__link
-
-    @property
-    def link_type(self):
-        return self.__link_type
-
-    @property
-    def full_path(self):
-        if self.__path and self.__path.endswith('/'):
-            return f"{self.__path}{self.name}"
-        elif self.__path:
-            return f"{self.__path}/{self.name}"
-        return self.name
-
-    @property
     def location(self):
-        return self.__path
+        if self.path:
+            return self.path[0:(self.path.rindex('/') + 1)]
 
     @property
     def type(self):
@@ -136,16 +120,16 @@ class File:
         return 'Unknown'
 
     @property
-    def date_raw(self):
+    def date__raw(self):
         if self.__date:
             return str(self.__date)[:-3]
 
     @property
     def isdir(self):
-        return self.type == FileTypes.DIRECTORY or self.link_type == FileTypes.DIRECTORY
+        return self.type == FileType.DIRECTORY or self.link_type == FileType.DIRECTORY
 
 
-class FileTypes:
+class FileType:
     FILE = 'File'
     DIRECTORY = 'Directory'
     LINK = 'Link'
@@ -163,7 +147,7 @@ class Device:
         self.type: str = kwargs.get("type")
 
 
-class DeviceTypes:
+class DeviceType:
     DEVICE = 'device'
     UNKNOWN = 'Unknown'
 
@@ -175,9 +159,3 @@ class Communicate(QObject):
     up = QtCore.pyqtSignal()
     files__refresh = QtCore.pyqtSignal()
     path_toolbar__refresh = QtCore.pyqtSignal()
-
-
-class Global:
-    __metaclass__ = Singleton
-
-    communicate = Communicate()
