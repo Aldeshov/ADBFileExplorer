@@ -101,7 +101,7 @@ class File:
         elif created.day + 7 < now.day:
             return f"{created.day} {months[created.month][2]}"
         elif created.day + 1 < now.day:
-            return f"{days[created.weekday()][1]} at {created.hour}:{created.minute}"
+            return f"{days[created.weekday()][1]} at {str(created.time())[:-3]}"
         elif created.day < now.day:
             return f"Yesterday at {str(created.time())[:-3]}"
         else:
