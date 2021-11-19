@@ -22,7 +22,7 @@ class FileRepository:
 
         file = convert_to_file(response.OutputData.strip())
         if file.type == FileType.LINK:
-            args = adb.ShellCommand.LS_ALL_DIRS + [path.replace(' ', r'\ ') + '/']
+            args = adb.ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ') + '/']
             response = adb.shell(FileManager.get_device(), args)
             file.link_type = FileType.UNKNOWN
             if response.OutputData and response.OutputData.startswith('d'):
