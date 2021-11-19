@@ -1,10 +1,10 @@
 import typing
 from typing import List
 
+from config import Default
 from services.data.drivers import convert_to_devices, convert_to_file, convert_to_file_list_a, convert_to_lines
 from services.data.managers import FileManager
 from services.data.models import File, Device, FileType
-from services.settings import default_download_path
 from services.shell import adb
 
 
@@ -60,7 +60,7 @@ class FileRepository:
     @classmethod
     def download(cls, source: str, async_fun: typing.Callable):
         if FileManager.get_device() and source:
-            adb.pull(FileManager.get_device(), source, default_download_path(), async_fun)
+            adb.pull(FileManager.get_device(), source, Default.device_downloads_path(), async_fun)
 
     @classmethod
     def download_to(cls, source: str, destination: str, async_fun: typing.Callable):
@@ -105,6 +105,14 @@ class DeviceRepository:
             return None, "Invalid arguments"
 
         response = adb.connect(device_id)
+        if not response.Successful:
+            return None, response.ErrorData or response.OutputData
+
+        return response.OutputData, response.ErrorData
+
+    @classmethod
+    def disconnect(cls) -> (str, str):
+        response = adb.disconnect()
         if not response.Successful:
             return None, response.ErrorData or response.OutputData
 

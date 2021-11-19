@@ -51,7 +51,6 @@ def convert_to_file(data: str) -> File:
             if code == 'l':
                 name = " ".join(fields[7:fields.index('->')])
                 link = " ".join(fields[fields.index('->') + 1:])
-
         elif ['c', 'b'].__contains__(code):
             other = fields[4]
             size = int(fields[5])
@@ -212,7 +211,7 @@ def convert_to_lines(data: str) -> list:
 
 
 # Converting octal data to normal permissions field
-# Created for: Line Converter - default
+# Created for: convert_to_file_list_b()
 # 100777 (.8)   --->    '- rwx rwx rwx' (str)
 def __converter_to_permissions_default__(octal_data: list) -> str:
     permission = (

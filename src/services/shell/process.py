@@ -23,7 +23,7 @@ class Process:
             self.ExitCode = process.returncode
             self.ErrorData = process.stderr.decode(encoding='utf-8')
             self.OutputData = process.stdout.decode(encoding='utf-8')
-            self.Successful = self.ExitCode is 0
+            self.Successful = self.ExitCode == 0
         except KeyboardInterrupt:
             self.ErrorData = "Process has been interrupted by keyboard!"
         except FileNotFoundError:
@@ -61,6 +61,6 @@ class ObservableProcess(QObject):
     def __observe__(self):
         _, error = self.__process__.communicate()
         self.ExitCode = self.__process__.poll()
-        self.Successful = self.ExitCode is 0
+        self.Successful = self.ExitCode == 0
         self.ErrorData = error.decode(encoding='utf-8')
         self.__completed__.emit(self.ExitCode, self.ErrorData)

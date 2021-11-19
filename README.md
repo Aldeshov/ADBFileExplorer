@@ -10,44 +10,51 @@ and upload to/download it
 <span style="color: yellow">
 # TODO<br/>
 # Project not finished and requires further development<br/>
-# Works well on Linux (Tested on: Ubuntu 20.04)<br/>
-# On windows 10 has some issues<br/>
+# Possible future features:<br/>
+# ● File:Settings - modify settings and store in <code>settings.json</code><br/>
+# ● Tool:APK Manager - list/download apks <br/>
+# ✅ Tested on: Ubuntu 20.04 & Windows 10 (last for 19.11.2021)<br/>
 </span>
 
-### Downloading
+### Downloading binaries (executables)
+
 <a href='https://github.com/Aldeshov/ADBFileExplorer/releases/tag/beta-v0.4'>
-Download for Linux and Windows<br/>
+● Download for Linux and Windows<br/>
 </a>
 
 ## Screenshots
+
 * Devices screen <br/>
-![Devices, screenshot](previews/devices.png)
+  ![Devices, screenshot](previews/devices.png)
 * Files screen <br/>
-![Files, screenshot](previews/files.png)
+  ![Files, screenshot](previews/files.png)
 
 <pre>*Window style depends on OS type and theme</pre>
-## Contains
 
-/assets - icons storage <br/>
-/src - source code written in `python` <br/>
+## Contains [Main packages]
+
+/res - project resources <br/>
+/src - project source code in `python` <br/>
+adb should exist in project root folder or in `PATH` variable
 
 ### Requirements
+
 * `Python 3.8` or `Python 3.9`
   (other versions not tested)
 
 * virtual environment (Optional)
-* pip installation with <b> requirements.txt </b>
 
+* pip installation with `requirements.txt`
 
 ## What works
 
-At the moment works features like:
+<b>At the moment works features like:</b>
 
-* showing devices
-* Connecting to devices by IP
-* showing files and directories of devices
-* pulling files
-* pushing files
+* Showing devices
+* Connecting to devices by IP / Disconnecting
+* Showing files and directories of devices
+* Pulling files
+* Pushing files
 
 <span style="color: red">
 <h2>Not works:</h2>

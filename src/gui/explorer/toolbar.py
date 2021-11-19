@@ -116,6 +116,9 @@ class PathBar(QWidget):
         self.path_go.setDefaultAction(self.action)
         self.layout.addWidget(self.path_go)
 
+        self.layout.setSpacing(10)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
         Global().communicate.path_toolbar__refresh.connect(self.__update__)
 
     def __update__(self):

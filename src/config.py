@@ -1,6 +1,8 @@
+import os
 import pathlib
 import platform
 
+from services.data.managers import FileManager
 from services.data.models import Singleton
 
 OS = (
@@ -27,7 +29,7 @@ class Application:
 class Settings:
     __metaclass__ = Singleton
 
-    adb__custom_path_enabled = False
+    adb__custom_path_enabled = True
     adb__custom_path_value = "adb"
 
 
@@ -39,6 +41,7 @@ class Resource:
 
     icon_exit = f'{__path__}/icons/exit.png'
     icon_connect = f'{__path__}/icons/connect.png'
+    icon_disconnect = f'{__path__}/icons/disconnect.png'
     icon_unknown = f'{__path__}/icons/unknown.png'
     icon_phone = f'{__path__}/icons/phone.png'
     icon_plus = f'{__path__}/icons/plus.png'
@@ -62,3 +65,18 @@ class Default:
     __metaclass__ = Singleton
 
     adb_path = f'{Application.PATH}\\adb.exe' if Application.PLATFORM == OS[2] else f'{Application.PATH}/adb'
+    downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
+
+    @staticmethod
+    def device_downloads_path():
+        if not os.path.isdir(Default.downloads_path):
+            os.mkdir(Default.downloads_path)
+        if FileManager.get_device():
+            downloads_path = os.path.join(
+                Default.downloads_path,
+                FileManager.get_device().replace(':', ' ')
+            )
+            if not os.path.isdir(downloads_path):
+                os.mkdir(downloads_path)
+            return downloads_path
+        return Default.downloads_path

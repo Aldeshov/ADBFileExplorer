@@ -15,6 +15,7 @@ class Parameter:
     HELP = '--help'
     VERSION = '--version'
     DEVICES = 'devices'
+    DISCONNECT = 'disconnect'
     START_SERVER = 'start-server'
     KILL_SERVER = 'kill-server'
 
@@ -60,6 +61,10 @@ def kill_server():
 
 def connect(device_id: str):
     return Process([__ADB__, Parameter.CONNECT, device_id])
+
+
+def disconnect():
+    return Process([__ADB__, Parameter.DISCONNECT])
 
 
 def pull(device_id: str, source_path: str, destination_path: str, async_fun: typing.Callable):

@@ -23,6 +23,11 @@ class MenuBar(QMenuBar):
         connect_action.triggered.connect(self.connect_device)
         self.file_menu.addAction(connect_action)
 
+        disconnect_action = QAction(QIcon(Resource.icon_disconnect), '&Disconnect', self)
+        disconnect_action.setShortcut('Alt+X')
+        disconnect_action.triggered.connect(self.disconnect)
+        self.file_menu.addAction(disconnect_action)
+
         devices_action = QAction(QIcon(Resource.icon_phone), '&Show devices', self)
         devices_action.setShortcut('Alt+D')
         devices_action.triggered.connect(Global().communicate.devices.emit)
@@ -36,6 +41,14 @@ class MenuBar(QMenuBar):
         about_action = QAction('About', self)
         about_action.triggered.connect(self.about.show)
         self.help_menu.addAction(about_action)
+
+    def disconnect(self):
+        data, error = DeviceRepository.disconnect()
+        if data:
+            QMessageBox.information(self.main_window, 'Disconnect', data)
+        if error:
+            QMessageBox.critical(self.main_window, 'Disconnect', error)
+        Global().communicate.devices.emit()
 
     def connect_device(self):
         self.main_window.statusBar().showMessage('Connecting... Please wait')
