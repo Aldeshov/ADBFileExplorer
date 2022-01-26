@@ -21,6 +21,9 @@ class FileRepository:
             return None, response.ErrorData or response.OutputData
 
         file = convert_to_file(response.OutputData.strip())
+        if not file:
+            return None, response.ErrorData or f"Unexpected string:\n{response.OutputData}"
+
         if file.type == FileType.LINK:
             args = adb.ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ') + '/']
             response = adb.shell(FileManager.get_device(), args)
@@ -30,9 +33,6 @@ class FileRepository:
             elif response.OutputData and response.OutputData.__contains__('Not a'):
                 file.link_type = FileType.FILE
         file.path = path
-
-        if not file:
-            return None, response.ErrorData or response.OutputData
         return file, response.ErrorData
 
     @classmethod
