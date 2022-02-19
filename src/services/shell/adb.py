@@ -15,6 +15,7 @@ class Parameter:
     HELP = '--help'
     VERSION = '--version'
     DEVICES = 'devices'
+    DEVICES_LONG = '-l'
     DISCONNECT = 'disconnect'
     START_SERVER = 'start-server'
     KILL_SERVER = 'kill-server'
@@ -48,7 +49,7 @@ def version():
 
 
 def devices():
-    return Process([__ADB__, Parameter.DEVICES])
+    return Process([__ADB__, Parameter.DEVICES, Parameter.DEVICES_LONG])
 
 
 def start_server():

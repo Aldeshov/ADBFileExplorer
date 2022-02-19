@@ -6,19 +6,26 @@ from services.data.models import Device, File, FileType
 
 
 # Converter to Device list
-# command: adb devices
+# command: adb devices -l
 # List of attached devices
 # <device_id>   <device_type>
 def convert_to_devices(data: str) -> List[Device]:
-    lines = data.split()[4:]  # Removing 'List of attached devices'
+    lines = convert_to_lines(data)[1:]  # Removing 'List of attached devices'
 
     devices = []
-    for i in range(0, int(len(lines) / 2)):
+    for line in lines:
+        data = line.split()
+        name = "Unknown Device"
+        for i in range(2, len(data)):
+            if data[i].startswith("model:"):
+                name = data[i][6:]
+                break
+
         devices.append(
             Device(
-                id=lines[i * 2 - 2],
-                name="Unknown Device",
-                type=lines[i * 2 - 1]
+                id=data[0],
+                name=name.replace('_', ' '),
+                type=data[1]
             )
         )
     return devices
@@ -198,7 +205,7 @@ def convert_to_file_list_b(data: str) -> List[File]:
 
 
 # Get lines from raw data
-def convert_to_lines(data: str) -> list:
+def convert_to_lines(data: str) -> List[str]:
     if not data:
         return list()
 
@@ -210,7 +217,7 @@ def convert_to_lines(data: str) -> list:
     return list(filtered)
 
 
-# Converting octal data to normal permissions field
+# Converting octal data to normal permissions' field
 # Created for: convert_to_file_list_b()
 # 100777 (.8)   --->    '- rwx rwx rwx' (str)
 def __converter_to_permissions_default__(octal_data: list) -> str:

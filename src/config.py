@@ -21,7 +21,7 @@ class Application:
     VERSION = f'beta v{VERSION_CODE}'
 
     PLATFORM = \
-        OS[1] if platform.platform().startswith(OS[1]) else OS[2] if platform.platform().startswith(OS[2]) else OS[3]
+        OS[1] if platform.platform().startswith(OS[1]) else OS[2] if platform.platform().startswith(OS[2]) else OS[0]
 
     PATH = __path__ if not DEBUG else str(pathlib.Path(__path__).parent.absolute())
 
