@@ -3,7 +3,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QWidget, QLabel, QApplication
 
 from gui.abstract.base import BaseIconWidget
-from config import Resource, Application
+from core.configurations import Resource, Application
 
 
 class About(QWidget):

@@ -2,7 +2,7 @@ import datetime
 import re
 from typing import List
 
-from services.data.models import Device, File, FileType
+from data.models import Device, File, FileType
 
 
 # Converter to Device list

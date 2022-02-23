@@ -1,7 +1,7 @@
 import datetime
+import typing
 
-from PyQt5 import QtCore
-from PyQt5.QtCore import QObject
+from PyQt5.QtWidgets import QWidget
 
 size_types = (
     ('BYTE', 'B'),
@@ -46,15 +46,6 @@ days = (
     ('SATURDAY', 'Saturday'),
     ('SUNDAY', 'Sunday'),
 )
-
-
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
 
 
 class File:
@@ -152,10 +143,11 @@ class DeviceType:
     UNKNOWN = 'Unknown'
 
 
-class Communicate(QObject):
-    files = QtCore.pyqtSignal()
-    devices = QtCore.pyqtSignal()
-
-    up = QtCore.pyqtSignal()
-    files__refresh = QtCore.pyqtSignal()
-    path_toolbar__refresh = QtCore.pyqtSignal()
+class MessageData:
+    def __init__(self, **kwargs):
+        self.title: str = kwargs.get("title") or "Message"
+        self.body: typing.Union[QWidget, str] = kwargs.get("body") or "Empty notification"
+        self.timeout: int = kwargs.get("timeout") or 5000
+        self.message_type: int = kwargs.get("message_type") or 0
+        self.height: int = kwargs.get("height") or 125
+        self.message_catcher: callable = kwargs.get("message_catcher") or None

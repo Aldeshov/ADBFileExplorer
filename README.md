@@ -11,9 +11,8 @@ and upload to/download it
 # TODO<br/>
 # Project not finished and requires further development<br/>
 # Possible future features:<br/>
-# ● File:Settings - modify settings and store in <code>settings.json</code><br/>
-# ● Tool:APK Manager - list/download apks <br/>
-# ✅ Tested on: Ubuntu 20.04 & Windows 10 (last for 19.11.2021)<br/>
+# ● File: Settings - modify settings and store in <code>settings.json</code><br/>
+# ● Tool: APK Manager - list/download apks <br/>
 </span>
 
 ### Downloading binaries (executables)
@@ -29,7 +28,7 @@ and upload to/download it
 * Files screen <br/>
   ![Files, screenshot](previews/files.png)
 
-<pre>*Window style depends on OS type and theme</pre>
+<pre>*Window frame style depends on OS type and theme</pre>
 
 ## Contains [Main packages]
 
@@ -56,6 +55,7 @@ adb should exist in project root folder or in `PATH` variable
 * Pulling files
 * Pushing files
 
+# Todo 2
 <span style="color: red">
 <h2>Not works:</h2>
 - Copying files <br/>
@@ -68,14 +68,12 @@ in the device
 ## Introduction to the code
 
 <pre>
-Project main packages are:
-<b>GUI</b> and <b>SERVICES</b>
-app starts from <i>app.py</i> file
-
-Folder <b>GUI</b> contains <i>PyQt5</i> ui elements, widgets, window etc.
-Folder <b>SERVICES</b> contains files that runs subprocesses and gets data from <i>ADB</i>, converts it to models
-
-The most editable file is <i>drivers.py</i>
-it tries to get data from adb command, and converts it to models
-At the moment, this file needs to be checked for issues on various types of devices.
+# TODO("Write brief description")
 </pre>
+
+
+## DEV: NEW FEATURES
+
+* Notification center (finished / may have some changes)
+* `python-adb` (finished / may have some changes)
+* Threading all tasks (not finished)

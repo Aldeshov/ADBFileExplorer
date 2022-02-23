@@ -1,14 +1,18 @@
 import sys
 
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QWidget
+from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
+from typing import Optional
 
-from config import Resource
+from core.configurations import Resource
+from core.daemons import Adb
+from core.managers import Global
+from data.models import File, FileType, MessageData
+from helpers.tools import AsyncRepositoryWorker
+from data.repositories import FileRepository
 from gui.abstract.base import BaseListItemWidget, BaseListWidget, BaseListHeaderWidget
-from gui.others.additional import LoadingWidget
-from services.data.managers import FileManager, Global
-from services.data.models import File, FileType
-from services.data.repositories import FileRepository
+from gui.others.notification import MessageType
 
 
 class FileHeaderWidget(BaseListHeaderWidget):
@@ -36,29 +40,58 @@ class FileListWidget(BaseListWidget):
     def __init__(self, explorer):
         super(FileListWidget, self).__init__()
         self.explorer = explorer
+        self.worker: Optional[AsyncRepositoryWorker] = None
 
     def update(self):
         super(FileListWidget, self).update()
-        files, error = FileRepository.files()
+        self.worker = AsyncRepositoryWorker(
+            parent=self,
+            worker_id=300,
+            name="Disconnecting",
+            repository_method=FileRepository.files,
+            response_callback=self.__async_response,
+            arguments=()
+        )
+        self.loading()
+        self.worker.start()
+
+    def __async_response(self, files, error):
         if error:
             print(error, file=sys.stderr)
         if error and not files:
-            QMessageBox.critical(self, 'Files', error)
-        Global().communicate.path_toolbar__refresh.emit()
+            Global().communicate.notification.emit(
+                MessageData(
+                    title='Files',
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    timeout=15000,
+                    message_type=MessageType.MESSAGE,
+                    height=100
+                )
+            )
 
         widgets = []
         for file in files:
             item = FileItemWidget(file, self.explorer)
             widgets.append(item)
         self.load(widgets, "Folder is empty")
+        Global().communicate.path_toolbar__refresh.emit()
+
+        # Important to add! close loading -> then kill worker
+        self.worker.close()
+        self.worker = None
 
 
 class FileItemWidget(BaseListItemWidget):
+    progress_callback = QtCore.pyqtSignal(str, int, int)
+
     def __init__(self, file: File, explorer):
         super(FileItemWidget, self).__init__()
         self.file = file
+        self._written = 0
         self.explorer = explorer
-        self.loading = QWidget()
+
+        self.worker: Optional[AsyncRepositoryWorker] = None
+        self.progress_callback.connect(self.update_progress)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
@@ -110,7 +143,7 @@ class FileItemWidget(BaseListItemWidget):
         super(FileItemWidget, self).mouseReleaseEvent(event)
 
         if event.button() == Qt.LeftButton:
-            if FileManager.open(self.file):
+            if Adb.manager().open(self.file):
                 self.parent().update()
 
     def context_menu(self, pos: QPoint):
@@ -149,25 +182,78 @@ class FileItemWidget(BaseListItemWidget):
 
         menu.exec(self.mapToGlobal(pos))
 
+    def __async_response(self, data, error):
+        if error:
+            Global().communicate.notification.emit(
+                MessageData(
+                    title='Download error',
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    timeout=15000,
+                    message_type=MessageType.MESSAGE,
+                    height=100
+                )
+            )
+        if data:
+            Global().communicate.notification.emit(
+                MessageData(
+                    title='Downloaded',
+                    body=data,
+                    timeout=15000,
+                    message_type=MessageType.MESSAGE
+                )
+            )
+        self.worker.close()
+        self.worker = None
+        self._written = 0
+
     def download(self):
-        self.loading = LoadingWidget(self, 'Downloading... Please wait')
-        FileRepository.download(self.file.path, self.__download__)
+        if not self.worker:
+            self.worker = AsyncRepositoryWorker(
+                parent=self,
+                worker_id=350,
+                name="Download",
+                repository_method=FileRepository.download,
+                response_callback=self.__async_response,
+                arguments=(self.progress_callback.emit, self.file.path)
+            )
+            Global().communicate.notification.emit(
+                MessageData(
+                    title="Downloading",
+                    body="Downloading",
+                    message_type=MessageType.LOADING_MESSAGE,
+                    message_catcher=self.worker.set_loading_widget
+                )
+            )
+            self.worker.loading_widget.setup_progress()
+            self.worker.start()
+
+    def update_progress(self, path, written, total):
+        if self.worker and self.worker.loading_widget:
+            self._written += int(written)
+            self.worker.loading_widget.update_progress(f"SRC: {str(path)}", int((self._written / total * 100)))
 
     def download_to(self):
-        dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
-
-        if dir_name:
-            self.loading = LoadingWidget(self, 'Downloading... Please wait')
-            FileRepository.download_to(self.file.path, dir_name, self.__download__)
-
-    def __download__(self, code, error):
-        self.loading.close()
-        del self.loading
-
-        if error or code != 0:
-            QMessageBox.critical(self, 'Download', error or 'Failed to download! Check the terminal')
-        else:
-            QMessageBox.information(self, 'Download', "Successfully downloaded!")
+        if not self.worker:
+            dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
+            if dir_name:
+                self.worker = AsyncRepositoryWorker(
+                    parent=self,
+                    worker_id=375,
+                    name="Download",
+                    repository_method=FileRepository.download_to,
+                    response_callback=self.__async_response,
+                    arguments=(self.progress_callback.emit, self.file.path, dir_name)
+                )
+                Global().communicate.notification.emit(
+                    MessageData(
+                        title="Downloading to",
+                        body="Downloading to",
+                        message_type=MessageType.LOADING_MESSAGE,
+                        message_catcher=self.worker.set_loading_widget
+                    )
+                )
+                self.worker.loading_widget.setup_progress()
+                self.worker.start()
 
     def file_properties(self):
         info = f"<br/><u><b>{str(self.file)}</b></u><br/>"

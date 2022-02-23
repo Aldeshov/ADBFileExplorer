@@ -3,7 +3,7 @@ from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QMovie
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QLabel
 
-from config import Resource
+from core.configurations import Resource
 
 
 class LoadingWidget(QWidget):

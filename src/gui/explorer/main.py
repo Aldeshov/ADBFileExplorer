@@ -1,9 +1,10 @@
 from PyQt5.QtWidgets import QWidget, QScrollArea, QVBoxLayout, QHBoxLayout, QSizePolicy
 
+from core.daemons import Adb
 from gui.explorer.devices import DeviceHeaderWidget, DeviceListWidget
 from gui.explorer.files import FileHeaderWidget, FileListWidget
 from gui.explorer.toolbar import UploadTools, ParentButton, PathBar
-from services.data.managers import FileManager, Global
+from core.managers import Global
 
 
 class FileExplorerToolbar(QWidget):
@@ -71,7 +72,7 @@ class Explorer(QWidget):
 
     def devices(self):
         self.clear()
-        FileManager.clear_device()
+        Adb.manager().clear_device()
         self.toolbar = QWidget()
 
         self.header = DeviceHeaderWidget()

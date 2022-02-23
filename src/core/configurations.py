@@ -2,8 +2,8 @@ import os
 import pathlib
 import platform
 
-from services.data.managers import FileManager
-from services.data.models import Singleton
+from data.models import Device
+from helpers.tools import Singleton
 
 OS = (
     'Unknown',
@@ -23,7 +23,7 @@ class Application:
     PLATFORM = \
         OS[1] if platform.platform().startswith(OS[1]) else OS[2] if platform.platform().startswith(OS[2]) else OS[0]
 
-    PATH = __path__ if not DEBUG else str(pathlib.Path(__path__).parent.absolute())
+    PATH = __path__ if not DEBUG else str(pathlib.Path(__path__).parent.parent.absolute())
 
 
 class Settings:
@@ -68,13 +68,13 @@ class Default:
     downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
 
     @staticmethod
-    def device_downloads_path():
+    def device_downloads_path(device: Device) -> str:
         if not os.path.isdir(Default.downloads_path):
             os.mkdir(Default.downloads_path)
-        if FileManager.get_device():
+        if device:
             downloads_path = os.path.join(
                 Default.downloads_path,
-                FileManager.get_device().replace(':', ' ')
+                device.name
             )
             if not os.path.isdir(downloads_path):
                 os.mkdir(downloads_path)
