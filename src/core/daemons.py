@@ -19,7 +19,7 @@ class Adb:
         (COMMON_ANDROID_ADB, "Android external tool `adb`")
     )
 
-    __instance__ = instances[COMMON_ANDROID_ADB]  # Experimental
+    __instance__ = instances[COMMON_ANDROID_ADB]  # __instance__ = instances[PYTHON_ADB]
 
     @classmethod
     def instance(cls):

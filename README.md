@@ -15,12 +15,6 @@ and upload to/download it
 # ● Tool: APK Manager - list/download apks <br/>
 </span>
 
-### Downloading binaries (executables)
-
-<a href='https://github.com/Aldeshov/ADBFileExplorer/releases/tag/beta-v0.4'>
-● Download for Linux and Windows<br/>
-</a>
-
 ## Screenshots
 
 * Devices screen <br/>
