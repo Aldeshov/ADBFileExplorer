@@ -143,6 +143,7 @@ class PathBar(QWidget):
         elif file and Adb.manager().go(file):
             Global().communicate.files__refresh.emit()
         else:
+            Global().communicate.path_toolbar__refresh.emit()
             Global().communicate.notification.emit(
                 MessageData(
                     title="Opening folder",

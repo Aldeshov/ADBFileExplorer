@@ -2,14 +2,14 @@ import datetime
 import logging
 import os
 import shlex
+from typing import List
 
 from adb.adb_commands import AdbCommands
-from typing import List
 
 from core.configurations import Default
 from core.managers import PythonADBManager
 from data.models import Device, File, FileType
-from helpers.converters import convert_to_file, __converter_to_permissions_default__
+from helpers.converters import __converter_to_permissions_default__
 from services.adb import ShellCommand
 
 
@@ -22,13 +22,14 @@ class FileRepository:
             return None, "Device not available!"
         try:
             path = PythonADBManager.clear_path(path)
-            response = PythonADBManager.device.shell(
-                shlex.join(ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ')])
+            mode, size, mtime = PythonADBManager.device.stat(path.replace(' ', r'\ '))
+            file = File(
+                name=os.path.basename(os.path.normpath(path)),
+                size=size,
+                date_time=datetime.datetime.utcfromtimestamp(mtime),
+                permissions=__converter_to_permissions_default__(list(oct(mode)[2:]))
             )
-            file = convert_to_file(response.strip())
 
-            if not file:
-                return None, f"Unexpected string:\n{response}"
             if file.type == FileType.LINK:
                 args = ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ') + '/']
                 response = PythonADBManager.device.shell(shlex.join(args))

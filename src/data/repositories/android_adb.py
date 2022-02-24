@@ -1,8 +1,5 @@
 import os
-import threading
 from typing import List
-
-from gevent import thread
 
 from core.configurations import Default
 from core.managers import AndroidADBManager
@@ -69,41 +66,15 @@ class FileRepository:
     @classmethod
     def download_to(cls, progress_callback: callable, source: str, destination: str) -> (str, str):
         if AndroidADBManager.get_device() and source and destination:
-            observer = cls.DownloadObservation(progress_callback, source, destination)
+            progress_callback(os.path.join(destination, os.path.basename(os.path.normpath(source))), 1, 2)
             response = adb.pull(AndroidADBManager.get_device().id, source, destination)
-            observer.finish()
+            progress_callback(os.path.join(destination, os.path.basename(os.path.normpath(source))), 1, 2)
             if not response.IsSuccessful:
                 return None, response.ErrorData
 
             destination = os.path.join(destination, os.path.basename(os.path.normpath(source)))
             return f"Download successful!\nDest: {destination}", None
         return None, None
-
-    # Experimental observing class
-    class DownloadObservation:
-        def __init__(self, progress_callback, source, destination):
-            self.finished = False
-            observer = threading.Thread(target=self.observe_download, args=(progress_callback, source, destination))
-            observer.start()
-
-        # Bad finishing
-        def finish(self):
-            self.finished = True
-
-        def observe_download(self, progress_callback, source, destination):
-            destination = os.path.join(destination, os.path.basename(os.path.normpath(source)))
-            args = adb.ShellCommand.LS_LIST_DIRS + [source.replace(' ', r'\ ')]
-            response = adb.shell(AndroidADBManager.get_device().id, args)
-            size = response.OutputData.split()[3]
-            if response.IsSuccessful and size.isdigit():
-                written = 0
-                while not self.finished:
-                    thread.sleep(0.2)
-                    if os.path.isfile(destination) or os.path.isdir(destination):
-                        progress_callback(destination, int(os.path.getsize(destination) - written), int(size))
-                        written = os.path.getsize(destination)
-                return True
-            progress_callback(destination, 1, 2)
 
     @classmethod
     def new_folder(cls, name) -> (str, str):
@@ -119,7 +90,9 @@ class FileRepository:
     @classmethod
     def upload(cls, progress_callback: callable, source: str) -> (str, str):
         if AndroidADBManager.get_device() and AndroidADBManager.path() and source:
+            progress_callback(os.path.join(AndroidADBManager.path(), os.path.basename(os.path.normpath(source))), 1, 2)
             response = adb.push(AndroidADBManager.get_device().id, source, AndroidADBManager.path())
+            progress_callback(os.path.join(AndroidADBManager.path(), os.path.basename(os.path.normpath(source))), 1, 2)
             if not response.IsSuccessful:
                 return None, response.ErrorData
 

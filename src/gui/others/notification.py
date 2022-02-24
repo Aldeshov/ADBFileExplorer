@@ -137,6 +137,7 @@ class LoadingMessage(BaseMessage):
     def __init__(self, parent, title: str, body: Union[QWidget, str], height=125):
         super(LoadingMessage, self).__init__(parent, height)
 
+        self.data = 0  # For downloading // uploading data holder
         self.label = None
         self.progress = None
         self.create_loading()
@@ -260,7 +261,7 @@ class NotificationCenter(QScrollArea):
             message = BaseMessage(self, height)
             message.create_title(title)
             message.create_close()
-            if body.__class__ != QWidget:
+            if not isinstance(body, QWidget):
                 body = QLabel(str(body))
                 body.setContentsMargins(10, 5, 10, 5)
                 body.setWordWrap(True)

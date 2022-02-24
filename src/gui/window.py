@@ -1,26 +1,25 @@
-from typing import Optional
-
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QInputDialog, QMenuBar, QMessageBox
 
 from core.configurations import Resource
 from core.daemons import Adb
 from core.managers import Global
-from helpers.tools import AsyncRepositoryWorker
+from data.models import MessageData
 from data.repositories import DeviceRepository
 from gui.explorer.main import Explorer
 from gui.others.help import About
 from gui.others.notification import NotificationCenter, MessageType
-from data.models import MessageData
+from helpers.tools import AsyncRepositoryWorker
 
 
 class MenuBar(QMenuBar):
+    CONNECT_WORKER_ID = 100
+    DISCONNECT_WORKER_ID = 101
+
     def __init__(self, parent):
         super(MenuBar, self).__init__(parent)
 
         self.about = About()
-        self.worker: Optional[AsyncRepositoryWorker] = None
-
         self.file_menu = self.addMenu('&File')
         self.help_menu = self.addMenu('&Help')
 
@@ -49,63 +48,58 @@ class MenuBar(QMenuBar):
         self.help_menu.addAction(about_action)
 
     def disconnect(self):
-        self.worker = AsyncRepositoryWorker(
-            parent=self,
-            worker_id=200,
+        worker = AsyncRepositoryWorker(
+            worker_id=self.DISCONNECT_WORKER_ID,
             name="Disconnecting",
             repository_method=DeviceRepository.disconnect,
-            response_callback=self.__async_response,
+            response_callback=self.__async_response_disconnect,
             arguments=()
         )
-        Global().communicate.notification.emit(
-            MessageData(
-                title='Disconnecting',
-                body="Disconnecting from devices, please wait",
-                message_type=MessageType.LOADING_MESSAGE,
-                height=80,
-                message_catcher=self.worker.set_loading_widget
+        if Adb.worker().work(worker):
+            Global().communicate.notification.emit(
+                MessageData(
+                    title='Disconnecting',
+                    body="Disconnecting from devices, please wait",
+                    message_type=MessageType.LOADING_MESSAGE,
+                    height=80,
+                    message_catcher=worker.set_loading_widget
+                )
             )
-        )
-        Global().communicate.status_bar.emit(f'Operation: {self.worker.name}... Please wait.', 3000)
-        self.worker.start()
+            Global().communicate.status_bar.emit(f'Operation: {worker.name}... Please wait.', 3000)
+            worker.start()
 
     def connect_device(self):
-        if not self.worker:
-            text, ok = QInputDialog.getText(self, 'Connect Device', 'Enter device IP:')
-            Global().communicate.status_bar.emit('Operation: Connecting canceled.', 3000)
+        text, ok = QInputDialog.getText(self, 'Connect Device', 'Enter device IP:')
+        Global().communicate.status_bar.emit('Operation: Connecting canceled.', 3000)
 
-            if ok and text:
-                self.worker = AsyncRepositoryWorker(
-                    parent=self,
-                    worker_id=100,
-                    name="Connecting to device",
-                    repository_method=DeviceRepository.connect,
-                    arguments=(str(text),),
-                    response_callback=self.__async_response
-                )
+        if ok and text:
+            worker = AsyncRepositoryWorker(
+                worker_id=self.CONNECT_WORKER_ID,
+                name="Connecting to device",
+                repository_method=DeviceRepository.connect,
+                arguments=(str(text),),
+                response_callback=self.__async_response_connect
+            )
+            if Adb.worker().work(worker):
                 Global().communicate.notification.emit(
                     MessageData(
                         title='Connecting',
                         body="Connecting to device via IP, please wait",
                         message_type=MessageType.LOADING_MESSAGE,
                         height=80,
-                        message_catcher=self.worker.set_loading_widget
+                        message_catcher=worker.set_loading_widget
                     )
                 )
-                Global().communicate.status_bar.emit(f'Operation: {self.worker.name}... Please wait.', 3000)
-                self.worker.start()
+                Global().communicate.status_bar.emit(f'Operation: {worker.name}... Please wait.', 3000)
+                worker.start()
 
-    def __async_response(self, data, error):
+    @staticmethod
+    def __async_response_disconnect(data, error):
         if data:
-            if self.worker.id == 100 and Adb.instance() == Adb.PYTHON_ADB:
-                Global().communicate.files.emit()
-            elif self.worker.id == 100:
-                Global().communicate.devices.emit()
-            elif self.worker.id == 200 and Adb.instance() == Adb.PYTHON_ADB:
-                Global().communicate.devices.emit()
+            Global().communicate.devices.emit()
             Global().communicate.notification.emit(
                 MessageData(
-                    title=self.worker.name,
+                    title="Disconnecting",
                     body=data,
                     timeout=15000,
                     message_type=MessageType.MESSAGE,
@@ -116,18 +110,43 @@ class MenuBar(QMenuBar):
             Global().communicate.devices.emit()
             Global().communicate.notification.emit(
                 MessageData(
-                    title=self.worker.name,
+                    title="Disconnecting",
                     body=f"<span style='color: red; font-weight: 600'> {error} </span>",
                     timeout=15000,
                     message_type=MessageType.MESSAGE,
                     height=100
                 )
             )
-        Global().communicate.status_bar.emit(f'Operation: {self.worker.name} finished.', 3000)
+        Global().communicate.status_bar.emit('Operation: Disconnecting finished.', 3000)
 
-        # Important to add! close loading -> then kill worker
-        self.worker.close()
-        self.worker = None
+    @staticmethod
+    def __async_response_connect(data, error):
+        if data:
+            if Adb.instance() == Adb.PYTHON_ADB:
+                Global().communicate.files.emit()
+            elif Adb.instance() == Adb.COMMON_ANDROID_ADB:
+                Global().communicate.devices.emit()
+            Global().communicate.notification.emit(
+                MessageData(
+                    title="Connecting to device",
+                    body=data,
+                    timeout=15000,
+                    message_type=MessageType.MESSAGE,
+                    height=100
+                )
+            )
+        if error:
+            Global().communicate.devices.emit()
+            Global().communicate.notification.emit(
+                MessageData(
+                    title="Connecting to device",
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    timeout=15000,
+                    message_type=MessageType.MESSAGE,
+                    height=100
+                )
+            )
+        Global().communicate.status_bar.emit('Operation: Connecting to device finished.', 3000)
 
 
 class MainWindow(QMainWindow):

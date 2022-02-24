@@ -1,18 +1,16 @@
 import sys
 
-from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
-from typing import Optional
 
 from core.configurations import Resource
 from core.daemons import Adb
 from core.managers import Global
 from data.models import File, FileType, MessageData
-from helpers.tools import AsyncRepositoryWorker
 from data.repositories import FileRepository
 from gui.abstract.base import BaseListItemWidget, BaseListWidget, BaseListHeaderWidget
 from gui.others.notification import MessageType
+from helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper
 
 
 class FileHeaderWidget(BaseListHeaderWidget):
@@ -37,23 +35,24 @@ class FileHeaderWidget(BaseListHeaderWidget):
 
 
 class FileListWidget(BaseListWidget):
+    FILES_WORKER_ID = 300
+
     def __init__(self, explorer):
         super(FileListWidget, self).__init__()
         self.explorer = explorer
-        self.worker: Optional[AsyncRepositoryWorker] = None
 
     def update(self):
         super(FileListWidget, self).update()
-        self.worker = AsyncRepositoryWorker(
-            parent=self,
-            worker_id=300,
-            name="Disconnecting",
+        worker = AsyncRepositoryWorker(
+            worker_id=self.FILES_WORKER_ID,
+            name="Files",
             repository_method=FileRepository.files,
             response_callback=self.__async_response,
             arguments=()
         )
-        self.loading()
-        self.worker.start()
+        if Adb.worker().work(worker):
+            self.loading()
+            worker.start()
 
     def __async_response(self, files, error):
         if error:
@@ -76,22 +75,15 @@ class FileListWidget(BaseListWidget):
         self.load(widgets, "Folder is empty")
         Global().communicate.path_toolbar__refresh.emit()
 
-        # Important to add! close loading -> then kill worker
-        self.worker.close()
-        self.worker = None
-
 
 class FileItemWidget(BaseListItemWidget):
-    progress_callback = QtCore.pyqtSignal(str, int, int)
+    DOWNLOAD_WORKER_ID = 399
 
     def __init__(self, file: File, explorer):
         super(FileItemWidget, self).__init__()
         self.file = file
-        self._written = 0
         self.explorer = explorer
 
-        self.worker: Optional[AsyncRepositoryWorker] = None
-        self.progress_callback.connect(self.update_progress)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
@@ -144,7 +136,7 @@ class FileItemWidget(BaseListItemWidget):
 
         if event.button() == Qt.LeftButton:
             if Adb.manager().open(self.file):
-                self.parent().update()
+                Global().communicate.files__refresh.emit()
 
     def context_menu(self, pos: QPoint):
         menu = QMenu()
@@ -182,7 +174,8 @@ class FileItemWidget(BaseListItemWidget):
 
         menu.exec(self.mapToGlobal(pos))
 
-    def __async_response(self, data, error):
+    @staticmethod
+    def __async_response(data, error):
         if error:
             Global().communicate.notification.emit(
                 MessageData(
@@ -202,58 +195,54 @@ class FileItemWidget(BaseListItemWidget):
                     message_type=MessageType.MESSAGE
                 )
             )
-        self.worker.close()
-        self.worker = None
-        self._written = 0
 
     def download(self):
-        if not self.worker:
-            self.worker = AsyncRepositoryWorker(
-                parent=self,
-                worker_id=350,
-                name="Download",
-                repository_method=FileRepository.download,
-                response_callback=self.__async_response,
-                arguments=(self.progress_callback.emit, self.file.path)
-            )
+        helper = ProgressCallbackHelper()
+        worker = AsyncRepositoryWorker(
+            worker_id=self.DOWNLOAD_WORKER_ID,
+            name="Download",
+            repository_method=FileRepository.download,
+            response_callback=FileItemWidget.__async_response,
+            arguments=(helper.progress_callback.emit, self.file.path)
+        )
+        if Adb.worker().work(worker):
             Global().communicate.notification.emit(
                 MessageData(
                     title="Downloading",
                     body="Downloading",
                     message_type=MessageType.LOADING_MESSAGE,
-                    message_catcher=self.worker.set_loading_widget
+                    message_catcher=worker.set_loading_widget
                 )
             )
-            self.worker.loading_widget.setup_progress()
-            self.worker.start()
-
-    def update_progress(self, path, written, total):
-        if self.worker and self.worker.loading_widget:
-            self._written += int(written)
-            self.worker.loading_widget.update_progress(f"SRC: {str(path)}", int((self._written / total * 100)))
+            helper.progress_callback.connect(worker.update_loading_widget)
+            worker.loading_widget.setup_progress()
+            helper.setParent(worker)  # Important to not lose the helper
+            worker.start()
 
     def download_to(self):
-        if not self.worker:
-            dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
-            if dir_name:
-                self.worker = AsyncRepositoryWorker(
-                    parent=self,
-                    worker_id=375,
-                    name="Download",
-                    repository_method=FileRepository.download_to,
-                    response_callback=self.__async_response,
-                    arguments=(self.progress_callback.emit, self.file.path, dir_name)
-                )
+        dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
+        if dir_name:
+            helper = ProgressCallbackHelper()
+            worker = AsyncRepositoryWorker(
+                worker_id=self.DOWNLOAD_WORKER_ID,
+                name="Download",
+                repository_method=FileRepository.download_to,
+                response_callback=FileItemWidget.__async_response,
+                arguments=(helper.progress_callback.emit, self.file.path, dir_name)
+            )
+            if Adb.worker().work(worker):
                 Global().communicate.notification.emit(
                     MessageData(
                         title="Downloading to",
                         body="Downloading to",
                         message_type=MessageType.LOADING_MESSAGE,
-                        message_catcher=self.worker.set_loading_widget
+                        message_catcher=worker.set_loading_widget
                     )
                 )
-                self.worker.loading_widget.setup_progress()
-                self.worker.start()
+                helper.progress_callback.connect(worker.update_loading_widget)
+                worker.loading_widget.setup_progress()
+                helper.setParent(worker)  # Important to not lose the helper
+                worker.start()
 
     def file_properties(self):
         info = f"<br/><u><b>{str(self.file)}</b></u><br/>"

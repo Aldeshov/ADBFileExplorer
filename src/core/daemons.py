@@ -1,8 +1,9 @@
+import logging
 from typing import Union
 
 import adb_shell
 
-from core.managers import PythonADBManager, AndroidADBManager
+from core.managers import PythonADBManager, AndroidADBManager, WorkersManager, PythonADBWorkerManager
 from helpers.tools import Singleton
 from services import adb
 
@@ -46,7 +47,10 @@ class Adb:
 
             # Start adb server
             adb_server = adb.start_server()
-            print(adb_server.OutputData or adb_server.ErrorData or 'ADB server running...')
+            if adb_server.ErrorData:
+                logging.error(adb_server.ErrorData)
+
+            print(adb_server.OutputData or 'ADB server running...')
             return True
 
     @classmethod
@@ -69,3 +73,10 @@ class Adb:
             return PythonADBManager()
         elif cls.instance() == cls.COMMON_ANDROID_ADB:
             return AndroidADBManager()
+
+    @classmethod
+    def worker(cls) -> Union[WorkersManager, PythonADBWorkerManager]:
+        # if cls.instance() == cls.PYTHON_ADB:
+        #     return PythonADBWorkerManager()
+        # elif cls.instance() == cls.COMMON_ANDROID_ADB:
+        return WorkersManager()

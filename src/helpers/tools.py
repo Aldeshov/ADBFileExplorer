@@ -41,15 +41,18 @@ class AsyncRepositoryWorker(QThread):
     on_response = QtCore.pyqtSignal(object, object)  # Response : data, error
 
     def __init__(
-            self, parent, worker_id: int, name: str,
+            self, worker_id: int, name: str,
             repository_method: callable,
             arguments: tuple, response_callback: callable
     ):
-        super(AsyncRepositoryWorker, self).__init__(parent)
+        super(AsyncRepositoryWorker, self).__init__()
         self.on_response.connect(response_callback)
+        self.finished.connect(self.close)
+
         self.__repository_method = repository_method
         self.__arguments = arguments
         self.loading_widget = None
+        self.closed = False
         self.id = worker_id
         self.name = name
 
@@ -60,11 +63,20 @@ class AsyncRepositoryWorker(QThread):
     def close(self):
         if self.loading_widget:
             self.loading_widget.close()
-        self.on_response.disconnect()
         self.deleteLater()
+        self.closed = True
 
     def set_loading_widget(self, widget: QWidget):
         self.loading_widget = widget
+
+    def update_loading_widget(self, path, written, total):
+        if self.loading_widget and not self.closed:
+            self.loading_widget.data += int(written)
+            self.loading_widget.update_progress(f"SRC: {str(path)}", int((self.loading_widget.data / total * 100)))
+
+
+class ProgressCallbackHelper(QObject):
+    progress_callback = QtCore.pyqtSignal(str, int, int)
 
 
 class Communicate(QObject):

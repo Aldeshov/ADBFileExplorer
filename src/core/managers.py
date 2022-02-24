@@ -1,11 +1,12 @@
 import logging
 from typing import List, Union
 
+from PyQt5.QtCore import QObject
 from adb_shell.adb_device import AdbDeviceTcp, AdbDeviceUsb
 from adb_shell.auth.sign_pythonrsa import PythonRSASigner
 
 from data.models import File, Device
-from helpers.tools import Communicate, Singleton, get_python_rsa_keys_signer
+from helpers.tools import Communicate, Singleton, get_python_rsa_keys_signer, AsyncRepositoryWorker
 
 
 class AndroidADBManager:
@@ -89,12 +90,61 @@ class PythonADBManager(AndroidADBManager):
     @classmethod
     def set_device(cls, device: Device) -> bool:
         super(PythonADBManager, cls).set_device(device)
-        try:
-            cls.connect(device.id)
-            return True
-        except BaseException as error:
-            logging.error(error)
-            return False
+        if not cls.device or not cls.device.available:
+            try:
+                cls.connect(device.id)
+                return True
+            except BaseException as error:
+                logging.error(error)
+                return False
+
+
+class WorkersManager:
+    """
+    General (Base) Workers Manager
+    Contains a list of workers
+    """
+    __metaclass__ = Singleton
+    instance = QObject()
+    workers: List[AsyncRepositoryWorker] = []
+
+    @classmethod
+    def work(cls, worker: AsyncRepositoryWorker) -> bool:
+        for _worker in cls.workers:
+            if _worker == worker or _worker.id == worker.id:
+                if _worker.closed:
+                    cls.workers.remove(_worker)
+                    del _worker
+                    break
+                logging.error(
+                    f"Cannot create Worker {worker.name}, {worker.id=}! "
+                    f"There already have a Worker {_worker.name} with id {_worker.id}!"
+                )
+                return False
+        worker.setParent(cls.instance)
+        cls.workers.append(worker)
+        return True
+
+
+class PythonADBWorkerManager(WorkersManager):
+    """
+    Workers Manager for `python-adb` and `adb-shell` libraries:
+    Reason: these libraries accept only one command per device.
+    Therefor, one worker per application
+    """
+    @classmethod
+    def work(cls, worker: AsyncRepositoryWorker) -> bool:
+        if len(cls.workers) > 0:
+            if not cls.workers[0].closed:
+                logging.error(
+                    f"Cannot create Worker {worker.name}, {worker.id=}! "
+                    f"There already have a Worker! class[PythonADBWorkerManager]"
+                )
+                return False
+            cls.workers.pop(0)
+        worker.setParent(cls.instance)
+        cls.workers.append(worker)
+        return True
 
 
 class Global:

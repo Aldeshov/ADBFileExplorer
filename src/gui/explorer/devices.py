@@ -20,18 +20,20 @@ class DeviceHeaderWidget(BaseListHeaderWidget):
 
 
 class DeviceListWidget(BaseListWidget):
+    DEVICES_WORKER_ID = 200
+
     def __init__(self):
         super(DeviceListWidget, self).__init__()
-        self.worker = AsyncRepositoryWorker(
-            parent=self,
-            worker_id=100,
+        worker = AsyncRepositoryWorker(
+            worker_id=self.DEVICES_WORKER_ID,
             name="Devices",
             repository_method=DeviceRepository.devices,
             arguments=(),
             response_callback=self.__async_response
         )
-        self.loading()
-        self.worker.start()
+        if Adb.worker().work(worker):
+            self.loading()
+            worker.start()
 
     def __async_response(self, devices, error):
         if error:
@@ -50,10 +52,6 @@ class DeviceListWidget(BaseListWidget):
             item = DeviceItemWidget(device)
             widgets.append(item)
         self.load(widgets, "There is no connected devices", False)
-
-        # Important to add! close loading -> then kill worker
-        self.worker.close()
-        self.worker = None
 
 
 class DeviceItemWidget(BaseListItemWidget):
