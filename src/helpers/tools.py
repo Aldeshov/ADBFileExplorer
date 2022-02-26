@@ -29,6 +29,9 @@ from data.models import MessageData
 
 class CommonProcess:
     def __init__(self, arguments: list, stdout=subprocess.PIPE, stdout_callback: callable = None):
+        self.IsSuccessful = False
+        self.OutputData = None
+        self.ErrorData = None
         if arguments and len(arguments) > 0:
             try:
                 process = subprocess.Popen(arguments, stdout=stdout, stderr=subprocess.PIPE)
@@ -40,6 +43,8 @@ class CommonProcess:
                 self.IsSuccessful: bool = process.poll() == 0
                 self.ErrorData: str = error.decode(encoding='utf-8')
                 self.OutputData: str = data.decode(encoding='utf-8') if data else None
+            except FileNotFoundError:
+                self.ErrorData = f"Command '{' '.join(arguments)}' failed! File (command) '{arguments[0]}' not found!"
             except BaseException as error:
                 logging.exception(f"Unexpected {error=}, {type(error)=}")
                 self.ErrorData = str(error)
