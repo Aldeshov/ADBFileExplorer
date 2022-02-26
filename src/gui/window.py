@@ -4,11 +4,11 @@ from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QInputDialog, QMenuBar, 
 from core.configurations import Resource
 from core.daemons import Adb
 from core.managers import Global
-from data.models import MessageData
+from data.models import MessageData, MessageType
 from data.repositories import DeviceRepository
 from gui.explorer.main import Explorer
 from gui.others.help import About
-from gui.others.notification import NotificationCenter, MessageType
+from gui.others.notification import NotificationCenter
 from helpers.tools import AsyncRepositoryWorker
 
 
@@ -122,9 +122,9 @@ class MenuBar(QMenuBar):
     @staticmethod
     def __async_response_connect(data, error):
         if data:
-            if Adb.instance() == Adb.PYTHON_ADB:
+            if Adb.CORE == Adb.PYTHON_ADB:
                 Global().communicate.files.emit()
-            elif Adb.instance() == Adb.COMMON_ANDROID_ADB:
+            elif Adb.CORE == Adb.COMMON_ANDROID_ADB:
                 Global().communicate.devices.emit()
             Global().communicate.notification.emit(
                 MessageData(
@@ -190,13 +190,13 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
-        if Adb.instance() == Adb.COMMON_ANDROID_ADB:
+        if Adb.CORE == Adb.COMMON_ANDROID_ADB:
             reply = QMessageBox.question(self, 'ADB Server', "Do you want to kill adb server?",
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
             if reply == QMessageBox.Yes:
                 Adb.stop()
-        elif Adb.instance() == Adb.PYTHON_ADB:
+        elif Adb.CORE == Adb.PYTHON_ADB:
             Adb.stop()
 
         event.accept()

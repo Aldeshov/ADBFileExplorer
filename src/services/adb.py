@@ -1,7 +1,7 @@
 from core.configurations import Settings, Default
 from helpers.tools import CommonProcess
 
-__ADB__ = Settings.adb__custom_path_value if Settings.adb__custom_path_enabled else Default.adb_path
+ADB_PATH = Settings.adb__custom_path_value if Settings.adb__custom_path_enabled else Default.adb_path
 
 
 class Parameter:
@@ -37,46 +37,46 @@ class ShellCommand:
 
 
 def validate():
-    validation = version().IsSuccessful
-    message = version().ErrorData
-    assert validation, message
+    return version().IsSuccessful
 
 
 def version():
-    return CommonProcess([__ADB__, Parameter.VERSION])
+    return CommonProcess([ADB_PATH, Parameter.VERSION])
 
 
 def devices():
-    return CommonProcess([__ADB__, Parameter.DEVICES, Parameter.DEVICES_LONG])
+    return CommonProcess([ADB_PATH, Parameter.DEVICES, Parameter.DEVICES_LONG])
 
 
 def start_server():
-    return CommonProcess([__ADB__, Parameter.START_SERVER])
+    return CommonProcess([ADB_PATH, Parameter.START_SERVER])
 
 
 def kill_server():
-    return CommonProcess([__ADB__, Parameter.KILL_SERVER])
+    return CommonProcess([ADB_PATH, Parameter.KILL_SERVER])
 
 
 def connect(device_id: str):
-    return CommonProcess([__ADB__, Parameter.CONNECT, device_id])
+    return CommonProcess([ADB_PATH, Parameter.CONNECT, device_id])
 
 
 def disconnect():
-    return CommonProcess([__ADB__, Parameter.DISCONNECT])
+    return CommonProcess([ADB_PATH, Parameter.DISCONNECT])
 
 
-def pull(device_id: str, source_path: str, destination_path: str):
-    return CommonProcess([__ADB__, Parameter.DEVICE, device_id, Parameter.PULL, source_path, destination_path], None)
+def pull(device_id: str, source_path: str, destination_path: str, stdout_callback: callable):
+    args = [ADB_PATH, Parameter.DEVICE, device_id, Parameter.PULL, source_path, destination_path]
+    return CommonProcess(arguments=args, stdout_callback=stdout_callback)
 
 
-def push(device_id: str, source_path: str, destination_path: str):
-    return CommonProcess([__ADB__, Parameter.DEVICE, device_id, Parameter.PUSH, source_path, destination_path], None)
+def push(device_id: str, source_path: str, destination_path: str, stdout_callback: callable):
+    args = [ADB_PATH, Parameter.DEVICE, device_id, Parameter.PUSH, source_path, destination_path]
+    return CommonProcess(arguments=args, stdout_callback=stdout_callback)
 
 
 def shell(device_id: str, args: list):
-    return CommonProcess([__ADB__, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
+    return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
 
 
 def file_list(device_id: str, path: str):
-    return CommonProcess([__ADB__, Parameter.DEVICE, device_id, ShellCommand.LS, path])
+    return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, ShellCommand.LS, path])

@@ -7,14 +7,11 @@ from core.configurations import Application
 from core.daemons import Adb
 from gui.window import MainWindow
 
-# To convert project to executable files with py-installer
-# change DEBUG in config.py to False
 if __name__ == '__main__':
-    print(f'ADB File explorer version {Application.VERSION}')
+    print(f'ADB File explorer version {Application.__version__}')
     print(f'Platform: {platform.platform()}')
 
-    # Starting adb
-    Adb.start()
+    Adb()  # Start adb
 
     # Creating new Application
     app = QApplication(sys.argv)

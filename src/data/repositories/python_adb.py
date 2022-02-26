@@ -4,7 +4,7 @@ import os
 import shlex
 from typing import List
 
-from adb.adb_commands import AdbCommands
+from usb1 import USBContext
 
 from core.configurations import Default
 from core.managers import PythonADBManager
@@ -93,15 +93,30 @@ class FileRepository:
         destination = Default.device_downloads_path(PythonADBManager.get_device())
         return cls.download_to(progress_callback, source, destination)
 
+    class UpDownHelper:
+        def __init__(self, callback: callable):
+            self.callback = callback
+            self.written = 0
+            self.total = 0
+
+        def call(self, path: str, written: int, total: int):
+            if self.total != total:
+                self.total = total
+                self.written = 0
+
+            self.written += written
+            self.callback(path, int(self.written / self.total * 100))
+
     @classmethod
     def download_to(cls, progress_callback: callable, source: str, destination: str) -> (str, str):
+        helper = cls.UpDownHelper(progress_callback)
         destination = os.path.join(destination, os.path.basename(os.path.normpath(source)))
         if PythonADBManager.device and PythonADBManager.device.available and source:
             try:
                 PythonADBManager.device.pull(
                     device_path=source,
                     local_path=destination,
-                    progress_callback=progress_callback
+                    progress_callback=helper.call
                 )
                 return f"Download successful!\nDest: {destination}", None
             except BaseException as error:
@@ -127,13 +142,14 @@ class FileRepository:
 
     @classmethod
     def upload(cls, progress_callback: callable, source: str) -> (str, str):
+        helper = cls.UpDownHelper(progress_callback)
         destination = PythonADBManager.path() + os.path.basename(os.path.normpath(source))
         if PythonADBManager.device and PythonADBManager.device.available and PythonADBManager.path() and source:
             try:
                 PythonADBManager.device.push(
                     local_path=source,
                     device_path=destination,
-                    progress_callback=progress_callback
+                    progress_callback=helper.call
                 )
                 return f"Upload successful!\nDest: {destination}", None
             except BaseException as error:
@@ -144,41 +160,37 @@ class FileRepository:
 
 class DeviceRepository:
     @classmethod
-    def devices(cls, limit=100) -> (List[Device], str):
-        gen = AdbCommands().Devices()
+    def devices(cls) -> (List[Device], str):
         if PythonADBManager.device:
             PythonADBManager.device.close()
 
         errors = []
         devices = []
-        for i in range(1, limit):
-            try:
-                device = next(gen)
-                PythonADBManager.connect(device.serial_number)
-                device_id = device.serial_number
-                device_name = " ".join(
-                    PythonADBManager.device.shell(" ".join(ShellCommand.GETPROP_PRODUCT_MODEL)).split()
-                )
-                device_type = "device" if PythonADBManager.device.available else "unknown"
-                devices.append(Device(id=device_id, name=device_name, type=device_type))
-                PythonADBManager.device.close()
-            except StopIteration:
-                break
-            except BaseException as error:
-                logging.error(f"Unexpected {error=}, {type(error)=}")
-                errors.append(f"Error device<{i}>: {error}")
-                continue
+        for device in USBContext().getDeviceList(skip_on_error=True):
+            for setting in device.iterSettings():
+                if (setting.getClass(), setting.getSubClass(), setting.getProtocol()) == (0xFF, 0x42, 0x01):
+                    try:
+                        PythonADBManager.connect(device.getSerialNumber())
+                        device_id = device.getSerialNumber()
+                        device_name = " ".join(
+                            PythonADBManager.device.shell(" ".join(ShellCommand.GETPROP_PRODUCT_MODEL)).split()
+                        )
+                        device_type = "device" if PythonADBManager.device.available else "unknown"
+                        devices.append(Device(id=device_id, name=device_name, type=device_type))
+                        PythonADBManager.device.close()
+                    except BaseException as error:
+                        logging.error(f"Unexpected {error=}, {type(error)=}")
+                        errors.append(str(error))
 
         return devices, str("\n".join(errors))
 
     @classmethod
-    def connect(cls, device_id, port=5555) -> (str, str):
+    def connect(cls, device_id: str) -> (str, str):
         try:
             if PythonADBManager.device:
                 PythonADBManager.device.close()
-            PythonADBManager.connect(device_id, port, True)
+            PythonADBManager.connect(device_id)
             if PythonADBManager.device.available:
-                device_id = f"{device_id}:{port}"
                 device_name = " ".join(
                     PythonADBManager.device.shell(" ".join(ShellCommand.GETPROP_PRODUCT_MODEL)).split()
                 )

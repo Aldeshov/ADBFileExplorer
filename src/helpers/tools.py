@@ -12,26 +12,18 @@ from data.models import MessageData
 
 
 class CommonProcess:
-    ExitCode: int
-    ErrorData: str
-    OutputData: str
-    IsSuccessful: bool = False
-
-    def __init__(self, arguments: list, stdout=subprocess.PIPE):
+    def __init__(self, arguments: list, stdout=subprocess.PIPE, stdout_callback: callable = None):
         if arguments and len(arguments) > 0:
-            command = arguments[0]
             try:
                 process = subprocess.Popen(arguments, stdout=stdout, stderr=subprocess.PIPE)
+                if stdout == subprocess.PIPE and stdout_callback:
+                    for line in iter(process.stdout.readline, b''):
+                        stdout_callback(line.decode(encoding='utf-8'))
                 data, error = process.communicate()
-                self.ExitCode = process.poll()
-                self.IsSuccessful = process.poll() == 0
-                self.ErrorData = error.decode(encoding='utf-8')
-                if stdout == subprocess.PIPE:
-                    self.OutputData = data.decode(encoding='utf-8')
-            except KeyboardInterrupt:
-                self.ErrorData = "Process has been interrupted!"
-            except FileNotFoundError:
-                self.ErrorData = f"Command {command} not found!"
+                self.ExitCode: int = process.poll()
+                self.IsSuccessful: bool = process.poll() == 0
+                self.ErrorData: str = error.decode(encoding='utf-8')
+                self.OutputData: str = data.decode(encoding='utf-8') if data else None
             except BaseException as error:
                 logging.exception(f"Unexpected {error=}, {type(error)=}")
                 self.ErrorData = str(error)
@@ -69,14 +61,17 @@ class AsyncRepositoryWorker(QThread):
     def set_loading_widget(self, widget: QWidget):
         self.loading_widget = widget
 
-    def update_loading_widget(self, path, written, total):
+    def update_loading_widget(self, path, progress):
         if self.loading_widget and not self.closed:
-            self.loading_widget.data += int(written)
-            self.loading_widget.update_progress(f"SRC: {str(path)}", int((self.loading_widget.data / total * 100)))
+            self.loading_widget.update_progress(f"SOURCE: {path}", progress)
 
 
 class ProgressCallbackHelper(QObject):
-    progress_callback = QtCore.pyqtSignal(str, int, int)
+    progress_callback = QtCore.pyqtSignal(str, int)
+
+    def setup(self, parent: QObject, callback: callable):
+        self.setParent(parent)
+        self.progress_callback.connect(callback)
 
 
 class Communicate(QObject):

@@ -13,7 +13,7 @@ class AndroidADBManager:
     __metaclass__ = Singleton
 
     __PATH__: List[str] = []
-    __DEVICE__: Union[Device, None]
+    __DEVICE__: Union[Device, None] = None
 
     @classmethod
     def path(cls) -> str:
@@ -79,13 +79,21 @@ class PythonADBManager(AndroidADBManager):
     device: Union[AdbDeviceUsb, AdbDeviceTcp] = None
     signer: PythonRSASigner = get_python_rsa_keys_signer()
 
-    @staticmethod
-    def connect(device_id, port: int = 5555, tcp: bool = False):  # IMPORTANT! throws exceptions -> use try | except
-        if tcp:
-            PythonADBManager.device = AdbDeviceTcp(device_id, port, default_transport_timeout_s=9.)
-        else:
-            PythonADBManager.device = AdbDeviceUsb()
-        PythonADBManager.device.connect(rsa_keys=[PythonADBManager.signer], auth_timeout_s=1.)
+    @classmethod
+    def connect(cls, device_id) -> Union[AdbDeviceUsb, AdbDeviceTcp]:
+        if device_id.__contains__('.'):
+            port = 5555
+            host = device_id
+            if device_id.__contains__(':'):
+                host = device_id.split(':')[0]
+                port = device_id.split(':')[1]
+            cls.device = AdbDeviceTcp(host=host, port=port, default_transport_timeout_s=9.)
+            cls.device.connect(rsa_keys=[cls.signer], auth_timeout_s=1.)
+            return cls.device
+
+        cls.device = AdbDeviceUsb()
+        cls.device.connect(rsa_keys=[cls.signer], auth_timeout_s=30.)
+        return cls.device
 
     @classmethod
     def set_device(cls, device: Device) -> bool:
@@ -101,7 +109,7 @@ class PythonADBManager(AndroidADBManager):
 
 class WorkersManager:
     """
-    General (Base) Workers Manager
+    Async Workers Manager
     Contains a list of workers
     """
     __metaclass__ = Singleton
@@ -112,39 +120,21 @@ class WorkersManager:
     def work(cls, worker: AsyncRepositoryWorker) -> bool:
         for _worker in cls.workers:
             if _worker == worker or _worker.id == worker.id:
-                if _worker.closed:
-                    cls.workers.remove(_worker)
-                    del _worker
-                    break
-                logging.error(
-                    f"Cannot create Worker {worker.name}, {worker.id=}! "
-                    f"There already have a Worker {_worker.name} with id {_worker.id}!"
-                )
-                return False
+                cls.workers.remove(_worker)
+                del _worker
+                break
         worker.setParent(cls.instance)
         cls.workers.append(worker)
         return True
 
-
-class PythonADBWorkerManager(WorkersManager):
-    """
-    Workers Manager for `python-adb` and `adb-shell` libraries:
-    Reason: these libraries accept only one command per device.
-    Therefor, one worker per application
-    """
     @classmethod
-    def work(cls, worker: AsyncRepositoryWorker) -> bool:
-        if len(cls.workers) > 0:
-            if not cls.workers[0].closed:
-                logging.error(
-                    f"Cannot create Worker {worker.name}, {worker.id=}! "
-                    f"There already have a Worker! class[PythonADBWorkerManager]"
-                )
+    def check(cls, worker_id: int) -> bool:
+        for worker in cls.workers:
+            if worker.id == worker_id:
+                if worker.closed:
+                    return True
                 return False
-            cls.workers.pop(0)
-        worker.setParent(cls.instance)
-        cls.workers.append(worker)
-        return True
+        return False
 
 
 class Global:

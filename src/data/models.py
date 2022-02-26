@@ -147,7 +147,13 @@ class MessageData:
     def __init__(self, **kwargs):
         self.title: str = kwargs.get("title") or "Message"
         self.body: typing.Union[QWidget, str] = kwargs.get("body") or "Empty notification"
-        self.timeout: int = kwargs.get("timeout") or 5000
-        self.message_type: int = kwargs.get("message_type") or 0
+        self.timeout: int = kwargs.get("timeout") or 0
+        self.message_type: int = kwargs.get("message_type") or MessageType.BASE_MESSAGE
         self.height: int = kwargs.get("height") or 125
         self.message_catcher: callable = kwargs.get("message_catcher") or None
+
+
+class MessageType:
+    BASE_MESSAGE = 0
+    MESSAGE = 1
+    LOADING_MESSAGE = 2

@@ -1,21 +1,20 @@
-from typing import Optional
-
 from PyQt5.QtGui import QIcon, QFocusEvent
 from PyQt5.QtWidgets import QToolButton, QMenu, QWidget, QAction, QFileDialog, QInputDialog, QLineEdit, QHBoxLayout
 
 from core.configurations import Resource
 from core.daemons import Adb
 from core.managers import Global
-from data.models import MessageData
+from data.models import MessageData, MessageType
 from data.repositories import FileRepository
-from gui.others.notification import MessageType
-from helpers.tools import AsyncRepositoryWorker
+from gui.explorer.files import FileListWidget
+from helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper
 
 
 class UploadTools(QToolButton):
     def __init__(self, parent):
         super(UploadTools, self).__init__(parent)
         self.menu = QMenu(self)
+        self.uploader = self.FilesUploader()
         self.show_action = QAction(QIcon(Resource.icon_plus), 'Upload', self)
         self.show_action.triggered.connect(self.showMenu)
         self.setDefaultAction(self.show_action)
@@ -37,43 +36,96 @@ class UploadTools(QToolButton):
         file_names = QFileDialog.getOpenFileNames(self, 'Select files', '~')[0]
 
         if file_names:
-            # TODO("Action: Upload Files")
-            pass
+            self.uploader.setup(file_names)
+            self.uploader.upload()
 
     def __action_upload_directory__(self):
         dir_name = QFileDialog.getExistingDirectory(self, 'Select directory', '~')
 
         if dir_name:
-            # TODO("Action: Upload Directory")
-            pass
+            self.uploader.setup([dir_name])
+            self.uploader.upload()
 
     def __action_create_folder__(self):
         text, ok = QInputDialog.getText(self, 'New folder', 'Enter new folder name:')
 
-        if ok:
-            # TODO("Action: Create Folder")
-            pass
-            # data, error = FileRepository.new_folder(text)
-            # if error:
-            #     error = f"<span style='color: red; font-weight: 600'> {error} </span>"
-            #     Global().communicate.notification.emit(
-            #         "Creating folder", error, 15000, MessageType.MESSAGE, 100
-            #     )
-            # if data:
-            #     Global().communicate.notification.emit(
-            #         "Creating folder", data, 15000, MessageType.MESSAGE, 100
-            #     )
-            # Global().communicate.files__refresh.emit()
+        if ok and text:
+            data, error = FileRepository.new_folder(text)
+            if error:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        title="Creating folder",
+                        body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                        timeout=15000,
+                        message_type=MessageType.MESSAGE,
+                        height=100
+                    )
+                )
+            if data:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        title="Creating folder",
+                        body=data,
+                        timeout=15000,
+                        message_type=MessageType.MESSAGE,
+                        height=100
+                    )
+                )
+            Global().communicate.files__refresh.emit()
 
     class FilesUploader:
-        def __init__(self, files: list):
-            self.files = files
-            self.worker: Optional[AsyncRepositoryWorker] = None
+        UPLOAD_WORKER_ID = 398
 
-        def upload(self, files: list):
-            # TODO("Action: Upload Method")
-            # Global().communicate.files__refresh.emit()
-            pass
+        def __init__(self):
+            self.files = []
+
+        def setup(self, files: list):
+            self.files = files
+
+        def upload(self, data=None, error=None):
+            if self.files:
+                helper = ProgressCallbackHelper()
+                worker = AsyncRepositoryWorker(
+                    worker_id=self.UPLOAD_WORKER_ID,
+                    name="Upload",
+                    repository_method=FileRepository.upload,
+                    response_callback=self.upload,
+                    arguments=(helper.progress_callback.emit, self.files.pop())
+                )
+                if Adb.worker().work(worker):
+                    Global().communicate.notification.emit(
+                        MessageData(
+                            title="Uploading",
+                            body="Uploading",
+                            message_type=MessageType.LOADING_MESSAGE,
+                            message_catcher=worker.set_loading_widget
+                        )
+                    )
+                    helper.setup(worker, worker.update_loading_widget)
+                    worker.loading_widget.setup_progress()
+                    worker.start()
+            else:
+                Global().communicate.files__refresh.emit()
+
+            if error:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        title='Upload error',
+                        body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                        timeout=15000,
+                        message_type=MessageType.MESSAGE,
+                        height=100
+                    )
+                )
+            if data:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        title='Uploaded',
+                        body=data,
+                        timeout=15000,
+                        message_type=MessageType.MESSAGE
+                    )
+                )
 
 
 class ParentButton(QToolButton):
@@ -86,7 +138,7 @@ class ParentButton(QToolButton):
 
     @staticmethod
     def __action__():
-        if Adb.manager().up():
+        if Adb.worker().check(FileListWidget.FILES_WORKER_ID) and Adb.manager().up():
             Global().communicate.files__refresh.emit()
 
 

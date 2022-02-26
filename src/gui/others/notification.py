@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QStyleOpt
 from typing import Union
 
 from core.configurations import Resource
-from data.models import MessageData
+from data.models import MessageData, MessageType
 
 
 class BaseMessage(QWidget):
@@ -137,7 +137,6 @@ class LoadingMessage(BaseMessage):
     def __init__(self, parent, title: str, body: Union[QWidget, str], height=125):
         super(LoadingMessage, self).__init__(parent, height)
 
-        self.data = 0  # For downloading // uploading data holder
         self.label = None
         self.progress = None
         self.create_loading()
@@ -149,6 +148,7 @@ class LoadingMessage(BaseMessage):
         self.box.addWidget(self.body)
 
     def setup_progress(self):
+        # Remove and replace the body widget with progress widget
         self.box.removeWidget(self.body)
         self.body.close()
         self.body.deleteLater()
@@ -201,12 +201,6 @@ class Message(BaseMessage):
         self.opacity_effect.setOpacity(opacity)
         if opacity == 0:
             self.close()
-
-
-class MessageType:
-    BASE_MESSAGE = 0
-    MESSAGE = 1
-    LOADING_MESSAGE = 2
 
 
 class NotificationCenter(QScrollArea):

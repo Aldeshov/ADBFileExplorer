@@ -1,4 +1,3 @@
-import os
 from typing import List
 
 from core.configurations import Default
@@ -63,17 +62,28 @@ class FileRepository:
         destination = Default.device_downloads_path(AndroidADBManager.get_device())
         return cls.download_to(progress_callback, source, destination)
 
+    class UpDownHelper:
+        def __init__(self, callback: callable):
+            self.messages = []
+            self.callback = callback
+
+        def call(self, data: str):
+            if data.startswith('['):
+                progress = data[1:4].strip()
+                if progress.isdigit():
+                    self.callback(data[7:], int(progress))
+            elif data:
+                self.messages.append(data)
+
     @classmethod
     def download_to(cls, progress_callback: callable, source: str, destination: str) -> (str, str):
         if AndroidADBManager.get_device() and source and destination:
-            progress_callback(os.path.join(destination, os.path.basename(os.path.normpath(source))), 1, 2)
-            response = adb.pull(AndroidADBManager.get_device().id, source, destination)
-            progress_callback(os.path.join(destination, os.path.basename(os.path.normpath(source))), 1, 2)
+            helper = cls.UpDownHelper(progress_callback)
+            response = adb.pull(AndroidADBManager.get_device().id, source, destination, helper.call)
             if not response.IsSuccessful:
-                return None, response.ErrorData
+                return None, response.ErrorData or "\n".join(helper.messages)
 
-            destination = os.path.join(destination, os.path.basename(os.path.normpath(source)))
-            return f"Download successful!\nDest: {destination}", None
+            return "\n".join(helper.messages), response.ErrorData
         return None, None
 
     @classmethod
@@ -90,13 +100,12 @@ class FileRepository:
     @classmethod
     def upload(cls, progress_callback: callable, source: str) -> (str, str):
         if AndroidADBManager.get_device() and AndroidADBManager.path() and source:
-            progress_callback(os.path.join(AndroidADBManager.path(), os.path.basename(os.path.normpath(source))), 1, 2)
-            response = adb.push(AndroidADBManager.get_device().id, source, AndroidADBManager.path())
-            progress_callback(os.path.join(AndroidADBManager.path(), os.path.basename(os.path.normpath(source))), 1, 2)
+            helper = cls.UpDownHelper(progress_callback)
+            response = adb.push(AndroidADBManager.get_device().id, source, AndroidADBManager.path(), helper.call)
             if not response.IsSuccessful:
-                return None, response.ErrorData
+                return None, response.ErrorData or "\n".join(helper.messages)
 
-            return f"Upload successful!\nDest: {AndroidADBManager.path()}", None
+            return "\n".join(helper.messages), response.ErrorData
         return None, None
 
 

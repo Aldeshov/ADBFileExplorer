@@ -13,7 +13,7 @@ class About(QWidget):
         icon.move(168, 40)
         about_text = "<br/><br/>"
         about_text += "<b>ADB File Explorer</b><br/>"
-        about_text += f"<i>Version: {Application.VERSION}</i><br/>"
+        about_text += f"<i>Version: {Application.__version__}</i><br/>"
         about_text += '<br/>'
         about_text += "Open source application written in <i>Python</i><br/>"
         about_text += "UI Library: <i>PyQt5</i><br/>"

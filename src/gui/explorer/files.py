@@ -6,10 +6,9 @@ from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
 from core.configurations import Resource
 from core.daemons import Adb
 from core.managers import Global
-from data.models import File, FileType, MessageData
+from data.models import File, FileType, MessageData, MessageType
 from data.repositories import FileRepository
 from gui.abstract.base import BaseListItemWidget, BaseListWidget, BaseListHeaderWidget
-from gui.others.notification import MessageType
 from helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper
 
 
@@ -214,9 +213,8 @@ class FileItemWidget(BaseListItemWidget):
                     message_catcher=worker.set_loading_widget
                 )
             )
-            helper.progress_callback.connect(worker.update_loading_widget)
+            helper.setup(worker, worker.update_loading_widget)
             worker.loading_widget.setup_progress()
-            helper.setParent(worker)  # Important to not lose the helper
             worker.start()
 
     def download_to(self):
@@ -239,9 +237,8 @@ class FileItemWidget(BaseListItemWidget):
                         message_catcher=worker.set_loading_widget
                     )
                 )
-                helper.progress_callback.connect(worker.update_loading_widget)
+                helper.setup(worker, worker.update_loading_widget)
                 worker.loading_widget.setup_progress()
-                helper.setParent(worker)  # Important to not lose the helper
                 worker.start()
 
     def file_properties(self):

@@ -3,11 +3,10 @@ from PyQt5.QtCore import Qt
 from core.configurations import Resource
 from core.daemons import Adb
 from core.managers import Global
-from data.models import Device, DeviceType, MessageData
+from data.models import Device, DeviceType, MessageData, MessageType
 from helpers.tools import AsyncRepositoryWorker
 from data.repositories import DeviceRepository
 from gui.abstract.base import BaseListWidget, BaseListItemWidget, BaseListHeaderWidget
-from gui.others.notification import MessageType
 
 
 class DeviceHeaderWidget(BaseListHeaderWidget):
