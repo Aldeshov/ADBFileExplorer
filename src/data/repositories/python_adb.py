@@ -186,8 +186,8 @@ class DeviceRepository:
             for setting in device.iterSettings():
                 if (setting.getClass(), setting.getSubClass(), setting.getProtocol()) == (0xFF, 0x42, 0x01):
                     try:
-                        PythonADBManager.connect(device.getSerialNumber())
                         device_id = device.getSerialNumber()
+                        PythonADBManager.connect(device_id)
                         device_name = " ".join(
                             PythonADBManager.device.shell(" ".join(ShellCommand.GETPROP_PRODUCT_MODEL)).split()
                         )
