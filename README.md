@@ -10,9 +10,13 @@ Features:
 * Pushing files / folders
 
 ## Screenshots
+
 Devices
+
 <img src="https://user-images.githubusercontent.com/47108137/155853630-ccb32071-9cf0-4702-9db9-694f6bba1f22.png" width="480">
+
 Files & Notifications
+
 <img src="https://user-images.githubusercontent.com/47108137/155853637-2a6f912e-7f3c-46d5-abeb-732591c1b938.png" width="480">
 
 ## Requirements
