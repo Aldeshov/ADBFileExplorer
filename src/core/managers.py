@@ -96,20 +96,20 @@ class PythonADBManager(AndroidADBManager):
     signer: PythonRSASigner = get_python_rsa_keys_signer()
 
     @classmethod
-    def connect(cls, device_id) -> Union[AdbDeviceUsb, AdbDeviceTcp]:
+    def connect(cls, device_id: str) -> str:
         if device_id.__contains__('.'):
             port = 5555
             host = device_id
             if device_id.__contains__(':'):
                 host = device_id.split(':')[0]
                 port = device_id.split(':')[1]
-            cls.device = AdbDeviceTcp(host=host, port=port, default_transport_timeout_s=9.)
+            cls.device = AdbDeviceTcp(host=host, port=port, default_transport_timeout_s=10.)
             cls.device.connect(rsa_keys=[cls.signer], auth_timeout_s=1.)
-            return cls.device
+            return f"{host}:{port}"
 
-        cls.device = AdbDeviceUsb()
+        cls.device = AdbDeviceUsb(serial=device_id, default_transport_timeout_s=3.)
         cls.device.connect(rsa_keys=[cls.signer], auth_timeout_s=30.)
-        return cls.device
+        return device_id
 
     @classmethod
     def set_device(cls, device: Device) -> bool:

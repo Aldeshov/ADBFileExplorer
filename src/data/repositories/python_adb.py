@@ -205,12 +205,12 @@ class DeviceRepository:
         try:
             if PythonADBManager.device:
                 PythonADBManager.device.close()
-            PythonADBManager.connect(device_id)
+            serial = PythonADBManager.connect(device_id)
             if PythonADBManager.device.available:
                 device_name = " ".join(
                     PythonADBManager.device.shell(" ".join(ShellCommand.GETPROP_PRODUCT_MODEL)).split()
                 )
-                PythonADBManager.set_device(Device(id=device_id, name=device_name, type="device"))
+                PythonADBManager.set_device(Device(id=serial, name=device_name, type="device"))
                 return "Connection established", None
             return None, "Device not available"
 
