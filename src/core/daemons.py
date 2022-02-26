@@ -30,7 +30,7 @@ class Adb:
     PYTHON_ADB = 0  # Python library `adb-shell`
     COMMON_ANDROID_ADB = 1  # Android external tool `adb`
 
-    CORE = PYTHON_ADB  # PYTHON_ADB / COMMON_ANDROID_ADB
+    CORE = COMMON_ANDROID_ADB  # PYTHON_ADB / COMMON_ANDROID_ADB
 
     def __init__(self):
         if self.CORE == self.PYTHON_ADB:
@@ -55,7 +55,8 @@ class Adb:
         if cls.CORE == cls.PYTHON_ADB:
             # Closing device connection
             if PythonADBManager.device and PythonADBManager.device.available:
-                print(f'Connection to device {PythonADBManager.get_device().name} closed')
+                name = PythonADBManager.get_device().name if PythonADBManager.get_device() else "Unknown"
+                print(f'Connection to device {name} closed')
                 PythonADBManager.device.close()
             return True
 

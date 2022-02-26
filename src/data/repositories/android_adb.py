@@ -69,7 +69,7 @@ class FileRepository:
         if not response_dirs.IsSuccessful and response_dirs.ExitCode != 1:
             return [], response_dirs.ErrorData or response_dirs.OutputData
 
-        dirs = response_dirs.OutputData.split()
+        dirs = response_dirs.OutputData.split() if response_dirs.OutputData else []
         files = convert_to_file_list_a(response.OutputData, dirs=dirs, path=path)
         return files, response.ErrorData
 
