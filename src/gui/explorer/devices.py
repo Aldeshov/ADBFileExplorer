@@ -1,11 +1,28 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMessageBox
+# ADB File Explorer `tool`
+# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from PyQt5.QtCore import Qt
+
+from core.configurations import Resource
+from core.daemons import Adb
+from core.managers import Global
+from data.models import Device, DeviceType, MessageData, MessageType
+from helpers.tools import AsyncRepositoryWorker
+from data.repositories import DeviceRepository
 from gui.abstract.base import BaseListWidget, BaseListItemWidget, BaseListHeaderWidget
-from config import Resource
-from services.data.managers import FileManager, Global
-from services.data.models import Device, DeviceType
-from services.data.repositories import DeviceRepository
 
 
 class DeviceHeaderWidget(BaseListHeaderWidget):
@@ -18,11 +35,32 @@ class DeviceHeaderWidget(BaseListHeaderWidget):
 
 
 class DeviceListWidget(BaseListWidget):
+    DEVICES_WORKER_ID = 200
+
     def __init__(self):
         super(DeviceListWidget, self).__init__()
-        devices, error = DeviceRepository.devices()
+        worker = AsyncRepositoryWorker(
+            worker_id=self.DEVICES_WORKER_ID,
+            name="Devices",
+            repository_method=DeviceRepository.devices,
+            arguments=(),
+            response_callback=self.__async_response
+        )
+        if Adb.worker().work(worker):
+            self.loading()
+            worker.start()
+
+    def __async_response(self, devices, error):
         if error:
-            QMessageBox.critical(self, 'Devices', error)
+            Global().communicate.notification.emit(
+                MessageData(
+                    title='Devices',
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    timeout=15000,
+                    message_type=MessageType.MESSAGE,
+                    height=120
+                )
+            )
 
         widgets = []
         for device in devices:
@@ -41,11 +79,20 @@ class DeviceItemWidget(BaseListItemWidget):
             self.layout.addWidget(self.icon(Resource.icon_unknown))
 
         self.layout.addWidget(self.name(device.name))
-        self.layout.addWidget(self.property(device.id,))
+        self.layout.addWidget(self.property(device.id))
 
     def mouseReleaseEvent(self, event):
         super(DeviceItemWidget, self).mouseReleaseEvent(event)
 
         if event.button() == Qt.LeftButton and self.device.type == DeviceType.DEVICE:
-            FileManager.set_device(self.device.id)
-            Global().communicate.files.emit()
+            if Adb.manager().set_device(self.device):
+                Global().communicate.files.emit()
+            else:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        title='Device',
+                        body=f"Could not open the device {Adb.manager().get_device().name}",
+                        message_type=MessageType.MESSAGE,
+                        height=80
+                    )
+                )

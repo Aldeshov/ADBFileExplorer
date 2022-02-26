@@ -1,7 +1,25 @@
+# ADB File Explorer `tool`
+# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPaintEvent, QPainter, QPixmap
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QStyleOption, QStyle, QSizePolicy, QVBoxLayout
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QPaintEvent, QPainter, QPixmap, QMovie
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QStyleOption, QStyle, QSizePolicy, QVBoxLayout, QGridLayout
+
+from core.configurations import Resource
 
 
 class BaseIconWidget(QLabel):
@@ -110,6 +128,7 @@ class BaseListWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.widgets = []
+        self.loading_widget = None
 
         self.layout = QVBoxLayout()
         self.layout.setSpacing(0)
@@ -117,9 +136,7 @@ class BaseListWidget(QWidget):
         self.setLayout(self.layout)
 
     def load(self, widgets, empty_message="Empty", empty_full=True):
-        for widget in self.widgets:
-            self.layout.removeWidget(widget)
-        self.widgets.clear()
+        self.clear()
 
         if not widgets:
             self.empty(empty_message, empty_full)
@@ -127,6 +144,34 @@ class BaseListWidget(QWidget):
             for widget in widgets:
                 self.widgets.append(widget)
                 self.layout.insertWidget(self.layout.count() - 1, widget)
+
+    def loading(self):
+        self.clear()
+        gif = QLabel(self)
+        movie = QMovie(Resource.anim_loading)
+        movie.setScaledSize(QSize(48, 48))
+        gif.setAlignment(Qt.AlignCenter)
+        gif.setMovie(movie)
+
+        box = QGridLayout()
+        box.addWidget(gif, 1, 0)
+        box.setAlignment(Qt.AlignCenter)
+
+        self.loading_widget = QWidget()
+        self.loading_widget.setLayout(box)
+        self.widgets.append(self.loading_widget)
+        self.layout.addWidget(self.loading_widget, 1)
+        movie.start()
+
+    def clear(self):
+        if self.loading_widget:
+            self.layout.removeWidget(self.loading_widget)
+            self.loading_widget.close()
+            self.loading_widget = None
+        for widget in self.widgets:
+            self.layout.removeWidget(widget)
+            widget.close()
+        self.widgets.clear()
 
     def empty(self, msg, full):
         if full:

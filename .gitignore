@@ -4,12 +4,5 @@ __pycache__
 # Virtual Environment
 /venv
 
-# Compiled Files -- pyinstaller
-/output
-/dist
-/build
-app.spec
-clean.sh
-
-# Ide
+# IDEs
 .idea

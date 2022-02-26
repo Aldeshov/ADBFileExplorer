@@ -1,14 +1,31 @@
+# ADB File Explorer `tool`
+# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import sys
 
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QWidget
+from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
 
-from config import Resource
+from core.configurations import Resource
+from core.daemons import Adb
+from core.managers import Global
+from data.models import File, FileType, MessageData, MessageType
+from data.repositories import FileRepository
 from gui.abstract.base import BaseListItemWidget, BaseListWidget, BaseListHeaderWidget
-from gui.others.additional import LoadingWidget
-from services.data.managers import FileManager, Global
-from services.data.models import File, FileType
-from services.data.repositories import FileRepository
+from helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper
 
 
 class FileHeaderWidget(BaseListHeaderWidget):
@@ -33,32 +50,55 @@ class FileHeaderWidget(BaseListHeaderWidget):
 
 
 class FileListWidget(BaseListWidget):
+    FILES_WORKER_ID = 300
+
     def __init__(self, explorer):
         super(FileListWidget, self).__init__()
         self.explorer = explorer
 
     def update(self):
         super(FileListWidget, self).update()
-        files, error = FileRepository.files()
+        worker = AsyncRepositoryWorker(
+            worker_id=self.FILES_WORKER_ID,
+            name="Files",
+            repository_method=FileRepository.files,
+            response_callback=self.__async_response,
+            arguments=()
+        )
+        if Adb.worker().work(worker):
+            self.loading()
+            worker.start()
+
+    def __async_response(self, files, error):
         if error:
             print(error, file=sys.stderr)
         if error and not files:
-            QMessageBox.critical(self, 'Files', error)
-        Global().communicate.path_toolbar__refresh.emit()
+            Global().communicate.notification.emit(
+                MessageData(
+                    title='Files',
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    timeout=15000,
+                    message_type=MessageType.MESSAGE,
+                    height=100
+                )
+            )
 
         widgets = []
         for file in files:
             item = FileItemWidget(file, self.explorer)
             widgets.append(item)
         self.load(widgets, "Folder is empty")
+        Global().communicate.path_toolbar__refresh.emit()
 
 
 class FileItemWidget(BaseListItemWidget):
+    DOWNLOAD_WORKER_ID = 399
+
     def __init__(self, file: File, explorer):
         super(FileItemWidget, self).__init__()
         self.file = file
         self.explorer = explorer
-        self.loading = QWidget()
+
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
@@ -110,8 +150,8 @@ class FileItemWidget(BaseListItemWidget):
         super(FileItemWidget, self).mouseReleaseEvent(event)
 
         if event.button() == Qt.LeftButton:
-            if FileManager.open(self.file):
-                self.parent().update()
+            if Adb.manager().open(self.file):
+                Global().communicate.files__refresh.emit()
 
     def context_menu(self, pos: QPoint):
         menu = QMenu()
@@ -149,25 +189,73 @@ class FileItemWidget(BaseListItemWidget):
 
         menu.exec(self.mapToGlobal(pos))
 
+    @staticmethod
+    def __async_response(data, error):
+        if error:
+            Global().communicate.notification.emit(
+                MessageData(
+                    title='Download error',
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    timeout=15000,
+                    message_type=MessageType.MESSAGE,
+                    height=100
+                )
+            )
+        if data:
+            Global().communicate.notification.emit(
+                MessageData(
+                    title='Downloaded',
+                    body=data,
+                    timeout=15000,
+                    message_type=MessageType.MESSAGE
+                )
+            )
+
     def download(self):
-        self.loading = LoadingWidget(self, 'Downloading... Please wait')
-        FileRepository.download(self.file.path, self.__download__)
+        helper = ProgressCallbackHelper()
+        worker = AsyncRepositoryWorker(
+            worker_id=self.DOWNLOAD_WORKER_ID,
+            name="Download",
+            repository_method=FileRepository.download,
+            response_callback=FileItemWidget.__async_response,
+            arguments=(helper.progress_callback.emit, self.file.path)
+        )
+        if Adb.worker().work(worker):
+            Global().communicate.notification.emit(
+                MessageData(
+                    title="Downloading",
+                    body="Downloading",
+                    message_type=MessageType.LOADING_MESSAGE,
+                    message_catcher=worker.set_loading_widget
+                )
+            )
+            helper.setup(worker, worker.update_loading_widget)
+            worker.loading_widget.setup_progress()
+            worker.start()
 
     def download_to(self):
         dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
-
         if dir_name:
-            self.loading = LoadingWidget(self, 'Downloading... Please wait')
-            FileRepository.download_to(self.file.path, dir_name, self.__download__)
-
-    def __download__(self, code, error):
-        self.loading.close()
-        del self.loading
-
-        if error or code != 0:
-            QMessageBox.critical(self, 'Download', error or 'Failed to download! Check the terminal')
-        else:
-            QMessageBox.information(self, 'Download', "Successfully downloaded!")
+            helper = ProgressCallbackHelper()
+            worker = AsyncRepositoryWorker(
+                worker_id=self.DOWNLOAD_WORKER_ID,
+                name="Download",
+                repository_method=FileRepository.download_to,
+                response_callback=FileItemWidget.__async_response,
+                arguments=(helper.progress_callback.emit, self.file.path, dir_name)
+            )
+            if Adb.worker().work(worker):
+                Global().communicate.notification.emit(
+                    MessageData(
+                        title="Downloading to",
+                        body="Downloading to",
+                        message_type=MessageType.LOADING_MESSAGE,
+                        message_catcher=worker.set_loading_widget
+                    )
+                )
+                helper.setup(worker, worker.update_loading_widget)
+                worker.loading_widget.setup_progress()
+                worker.start()
 
     def file_properties(self):
         info = f"<br/><u><b>{str(self.file)}</b></u><br/>"

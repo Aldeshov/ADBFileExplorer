@@ -1,7 +1,23 @@
-import datetime
+# ADB File Explorer `tool`
+# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from PyQt5 import QtCore
-from PyQt5.QtCore import QObject
+import datetime
+import typing
+
+from PyQt5.QtWidgets import QWidget
 
 size_types = (
     ('BYTE', 'B'),
@@ -46,15 +62,6 @@ days = (
     ('SATURDAY', 'Saturday'),
     ('SUNDAY', 'Sunday'),
 )
-
-
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
 
 
 class File:
@@ -152,10 +159,17 @@ class DeviceType:
     UNKNOWN = 'Unknown'
 
 
-class Communicate(QObject):
-    files = QtCore.pyqtSignal()
-    devices = QtCore.pyqtSignal()
+class MessageData:
+    def __init__(self, **kwargs):
+        self.title: str = kwargs.get("title") or "Message"
+        self.body: typing.Union[QWidget, str] = kwargs.get("body") or "Empty notification"
+        self.timeout: int = kwargs.get("timeout") or 0
+        self.message_type: int = kwargs.get("message_type") or MessageType.BASE_MESSAGE
+        self.height: int = kwargs.get("height") or 125
+        self.message_catcher: callable = kwargs.get("message_catcher") or None
 
-    up = QtCore.pyqtSignal()
-    files__refresh = QtCore.pyqtSignal()
-    path_toolbar__refresh = QtCore.pyqtSignal()
+
+class MessageType:
+    BASE_MESSAGE = 0
+    MESSAGE = 1
+    LOADING_MESSAGE = 2

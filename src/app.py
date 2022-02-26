@@ -1,26 +1,31 @@
-import platform
+# ADB File Explorer `tool`
+# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from config import Application
+from core.configurations import Application
+from core.daemons import Adb
 from gui.window import MainWindow
-from services.shell import adb
 
-
-# To convert project to executable files with py-installer
-# change DEBUG in config.py to False
 if __name__ == '__main__':
-    # Initial log
-    print(f'ADB File explorer version {Application.VERSION}')
-    print(f'Platform: {platform.platform()}')
+    print(Application.NOTICE)
 
-    # Validate ADB and start server
-    adb.validate()
-    print(adb.version().OutputData)
-
-    adb_server = adb.start_server()
-    print(adb_server.OutputData or adb_server.ErrorData or 'ADB server running...')
+    Adb()  # Start adb
 
     # Creating new Application
     app = QApplication(sys.argv)

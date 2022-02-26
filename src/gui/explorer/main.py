@@ -1,9 +1,26 @@
+# ADB File Explorer `tool`
+# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 from PyQt5.QtWidgets import QWidget, QScrollArea, QVBoxLayout, QHBoxLayout, QSizePolicy
 
+from core.daemons import Adb
 from gui.explorer.devices import DeviceHeaderWidget, DeviceListWidget
 from gui.explorer.files import FileHeaderWidget, FileListWidget
 from gui.explorer.toolbar import UploadTools, ParentButton, PathBar
-from services.data.managers import FileManager, Global
+from core.managers import Global
 
 
 class FileExplorerToolbar(QWidget):
@@ -71,7 +88,7 @@ class Explorer(QWidget):
 
     def devices(self):
         self.clear()
-        FileManager.clear_device()
+        Adb.manager().clear_device()
         self.toolbar = QWidget()
 
         self.header = DeviceHeaderWidget()
