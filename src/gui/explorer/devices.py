@@ -37,8 +37,8 @@ class DeviceHeaderWidget(BaseListHeaderWidget):
 class DeviceListWidget(BaseListWidget):
     DEVICES_WORKER_ID = 200
 
-    def __init__(self):
-        super(DeviceListWidget, self).__init__()
+    def __init__(self, parent):
+        super(DeviceListWidget, self).__init__(parent)
         worker = AsyncRepositoryWorker(
             worker_id=self.DEVICES_WORKER_ID,
             name="Devices",

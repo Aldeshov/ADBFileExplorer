@@ -17,10 +17,10 @@
 from PyQt5.QtWidgets import QWidget, QScrollArea, QVBoxLayout, QHBoxLayout, QSizePolicy
 
 from core.daemons import Adb
+from core.managers import Global
 from gui.explorer.devices import DeviceHeaderWidget, DeviceListWidget
 from gui.explorer.files import FileHeaderWidget, FileListWidget
 from gui.explorer.toolbar import UploadTools, ParentButton, PathBar
-from core.managers import Global
 
 
 class FileExplorerToolbar(QWidget):
@@ -84,6 +84,9 @@ class Explorer(QWidget):
         self.layout.addWidget(self.scroll)
 
         self.scroll.widget().update()
+
+        Global().communicate.files__refresh.connect(print)
+        Global().communicate.files__refresh.disconnect()
         Global().communicate.files__refresh.connect(self.__update_files)
 
     def devices(self):
@@ -94,17 +97,23 @@ class Explorer(QWidget):
         self.header = DeviceHeaderWidget()
         self.layout.addWidget(self.header)
 
-        self.body = DeviceListWidget()
+        self.body = DeviceListWidget(self)
         self.scroll.setWidget(self.body)
         self.layout.addWidget(self.scroll)
 
     def clear(self):
+        self.toolbar.close()
+        self.toolbar.deleteLater()
         self.layout.removeWidget(self.toolbar)
         del self.toolbar
 
+        self.header.close()
+        self.header.deleteLater()
         self.layout.removeWidget(self.header)
         del self.header
 
+        self.body.close()
+        self.body.deleteLater()
         self.layout.removeWidget(self.body)
         del self.body
 

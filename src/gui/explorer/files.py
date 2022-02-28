@@ -52,9 +52,8 @@ class FileHeaderWidget(BaseListHeaderWidget):
 class FileListWidget(BaseListWidget):
     FILES_WORKER_ID = 300
 
-    def __init__(self, explorer):
-        super(FileListWidget, self).__init__()
-        self.explorer = explorer
+    def __init__(self, parent):
+        super(FileListWidget, self).__init__(parent)
 
     def update(self):
         super(FileListWidget, self).update()
@@ -85,7 +84,7 @@ class FileListWidget(BaseListWidget):
 
         widgets = []
         for file in files:
-            item = FileItemWidget(file, self.explorer)
+            item = FileItemWidget(self, file)
             widgets.append(item)
         self.load(widgets, "Folder is empty")
         Global().communicate.path_toolbar__refresh.emit()
@@ -94,10 +93,9 @@ class FileListWidget(BaseListWidget):
 class FileItemWidget(BaseListItemWidget):
     DOWNLOAD_WORKER_ID = 399
 
-    def __init__(self, file: File, explorer):
-        super(FileItemWidget, self).__init__()
+    def __init__(self, parent, file: File):
+        super(FileItemWidget, self).__init__(parent)
         self.file = file
-        self.explorer = explorer
 
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)

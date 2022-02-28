@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import logging
+import sys
 from typing import Union
 
 import adb_shell
@@ -46,7 +46,7 @@ class Adb:
             # Start adb server
             adb_server = adb.start_server()
             if adb_server.ErrorData:
-                logging.error(adb_server.ErrorData)
+                print(adb_server.ErrorData, file=sys.stderr)
 
             print(adb_server.OutputData or 'ADB server running...')
 

@@ -51,8 +51,8 @@ class BaseListHeaderWidget(QWidget):
 
 
 class BaseListItemWidget(QWidget):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.setMinimumHeight(40)
         self.setObjectName("item")
         self.installEventFilter(self)
@@ -125,8 +125,8 @@ class BaseListItemWidget(QWidget):
 
 
 class BaseListWidget(QWidget):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.widgets = []
         self.loading_widget = None
 
@@ -171,6 +171,7 @@ class BaseListWidget(QWidget):
         for widget in self.widgets:
             self.layout.removeWidget(widget)
             widget.close()
+            widget.deleteLater()
         self.widgets.clear()
 
     def empty(self, msg, full):
