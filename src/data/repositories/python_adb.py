@@ -71,7 +71,7 @@ class FileRepository:
         files = []
         try:
             path = PythonADBManager.path()
-            response = PythonADBManager.device.list(path.replace(' ', r'\ '))
+            response = PythonADBManager.device.list(path)
 
             args = ShellCommand.LS_ALL_DIRS + [path.replace(' ', r'\ ') + "*/"]
             dirs = PythonADBManager.device.shell(" ".join(args)).split()

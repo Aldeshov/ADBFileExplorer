@@ -30,7 +30,7 @@ class Adb:
     PYTHON_ADB = 0  # Python library `adb-shell`
     COMMON_ANDROID_ADB = 1  # Android external tool `adb`
 
-    CORE = COMMON_ANDROID_ADB  # PYTHON_ADB / COMMON_ANDROID_ADB
+    CORE = PYTHON_ADB  # PYTHON_ADB / COMMON_ANDROID_ADB
 
     def __init__(self):
         if self.CORE == self.PYTHON_ADB:
