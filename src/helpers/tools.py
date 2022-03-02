@@ -32,7 +32,7 @@ class CommonProcess:
         self.IsSuccessful = False
         self.OutputData = None
         self.ErrorData = None
-        if arguments and len(arguments) > 0:
+        if arguments:
             try:
                 process = subprocess.Popen(arguments, stdout=stdout, stderr=subprocess.PIPE)
                 if stdout == subprocess.PIPE and stdout_callback:
@@ -40,8 +40,8 @@ class CommonProcess:
                         stdout_callback(line.decode(encoding='utf-8'))
                 data, error = process.communicate()
                 self.ExitCode: int = process.poll()
-                self.IsSuccessful: bool = process.poll() == 0
-                self.ErrorData: str = error.decode(encoding='utf-8')
+                self.IsSuccessful: bool = self.ExitCode == 0
+                self.ErrorData: str = error.decode(encoding='utf-8') if error else None
                 self.OutputData: str = data.decode(encoding='utf-8') if data else None
             except FileNotFoundError:
                 self.ErrorData = f"Command '{' '.join(arguments)}' failed! File (command) '{arguments[0]}' not found!"

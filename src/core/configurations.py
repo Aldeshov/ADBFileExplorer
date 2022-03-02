@@ -23,7 +23,7 @@ from helpers.tools import Singleton
 
 
 class Application:
-    __version__ = '1.0'
+    __version__ = '1.0.0'
     __metaclass__ = Singleton
 
     NOTICE = f"""\033[0;32m

@@ -32,6 +32,12 @@ if __name__ == '__main__':
 
     # Creating new window
     window = MainWindow()
+    window.setStyleSheet(
+        "QWidget {"
+        "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, "
+        "Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;"
+        "}"
+    )
     window.show()
 
     sys.exit(app.exec_())
