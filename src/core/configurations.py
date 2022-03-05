@@ -65,7 +65,7 @@ class Resource:
 
     path = os.path.join(Application.PATH, 'res')
 
-    logo = os.path.join(path, 'logo.png')
+    logo = os.path.join(path, 'icons', 'logo.png')
     icon_exit = os.path.join(path, 'icons', 'exit.png')
     icon_connect = os.path.join(path, 'icons', 'connect.png')
     icon_disconnect = os.path.join(path, 'icons', 'disconnect.png')
@@ -75,13 +75,15 @@ class Resource:
     icon_up = os.path.join(path, 'icons', 'up.png')
     icon_ok = os.path.join(path, 'icons', 'ok.png')
     icon_go = os.path.join(path, 'icons', 'go.png')
-    icon_file = os.path.join(path, 'icons', 'files', 'file.png')
+    icon_file = os.path.join(path, 'icons', 'files', 'file.svg')
     icon_folder = os.path.join(path, 'icons', 'files', 'folder.png')
     icon_file_unknown = os.path.join(path, 'icons', 'files', 'file_unknown.png')
-    icon_link_file = os.path.join(path, 'icons', 'files', 'link_file.png')
+    icon_link_file = os.path.join(path, 'icons', 'files', 'link_file.svg')
     icon_link_folder = os.path.join(path, 'icons', 'files', 'link_folder.png')
     icon_link_file_unknown = os.path.join(path, 'icons', 'files', 'link_file_unknown.png')
     icon_files_upload = os.path.join(path, 'icons', 'files', 'files_upload.png')
     icon_folder_upload = os.path.join(path, 'icons', 'files', 'folder_upload.png')
     icon_folder_create = os.path.join(path, 'icons', 'files', 'folder_create.png')
     anim_loading = os.path.join(path, 'anim', 'loading.gif')
+
+    icon_close = os.path.join(path, 'icons', 'close.svg')

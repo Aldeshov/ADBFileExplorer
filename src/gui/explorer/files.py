@@ -75,10 +75,8 @@ class FileListWidget(BaseListWidget):
             Global().communicate.notification.emit(
                 MessageData(
                     title='Files',
-                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
                     timeout=15000,
-                    message_type=MessageType.MESSAGE,
-                    height=100
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>"
                 )
             )
 
@@ -193,19 +191,16 @@ class FileItemWidget(BaseListItemWidget):
             Global().communicate.notification.emit(
                 MessageData(
                     title='Download error',
-                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
                     timeout=15000,
-                    message_type=MessageType.MESSAGE,
-                    height=100
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>"
                 )
             )
         if data:
             Global().communicate.notification.emit(
                 MessageData(
                     title='Downloaded',
-                    body=data,
                     timeout=15000,
-                    message_type=MessageType.MESSAGE
+                    body=data
                 )
             )
 
@@ -222,13 +217,11 @@ class FileItemWidget(BaseListItemWidget):
             Global().communicate.notification.emit(
                 MessageData(
                     title="Downloading",
-                    body="Downloading",
                     message_type=MessageType.LOADING_MESSAGE,
                     message_catcher=worker.set_loading_widget
                 )
             )
             helper.setup(worker, worker.update_loading_widget)
-            worker.loading_widget.setup_progress()
             worker.start()
 
     def download_to(self):
@@ -246,13 +239,11 @@ class FileItemWidget(BaseListItemWidget):
                 Global().communicate.notification.emit(
                     MessageData(
                         title="Downloading to",
-                        body="Downloading to",
                         message_type=MessageType.LOADING_MESSAGE,
                         message_catcher=worker.set_loading_widget
                     )
                 )
                 helper.setup(worker, worker.update_loading_widget)
-                worker.loading_widget.setup_progress()
                 worker.start()
 
     def file_properties(self):

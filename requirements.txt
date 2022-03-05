@@ -1,3 +1,0 @@
-PyQt5~=5.15.6
-libusb1~=3.0.0
-adb-shell~=0.4.2

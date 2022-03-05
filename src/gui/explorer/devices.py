@@ -55,10 +55,8 @@ class DeviceListWidget(BaseListWidget):
             Global().communicate.notification.emit(
                 MessageData(
                     title='Devices',
-                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
                     timeout=15000,
-                    message_type=MessageType.MESSAGE,
-                    height=120
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>"
                 )
             )
 
@@ -91,8 +89,7 @@ class DeviceItemWidget(BaseListItemWidget):
                 Global().communicate.notification.emit(
                     MessageData(
                         title='Device',
-                        body=f"Could not open the device {Adb.manager().get_device().name}",
-                        message_type=MessageType.MESSAGE,
-                        height=80
+                        timeout=10000,
+                        body=f"Could not open the device {Adb.manager().get_device().name}"
                     )
                 )

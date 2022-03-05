@@ -1,0 +1,7 @@
+QWidget#body {
+    text-align: center;
+}
+/* Unused file: "Styles qss"
+    TODO("Use qss file as styles configuration for PyQt5 QWidgets")
+    https://stackoverflow.com/questions/4448236/how-could-qt-apply-style-from-an-external-qt-stylesheet-file
+*/

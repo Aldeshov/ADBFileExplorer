@@ -70,21 +70,17 @@ class UploadTools(QToolButton):
             if error:
                 Global().communicate.notification.emit(
                     MessageData(
+                        timeout=15000,
                         title="Creating folder",
                         body=f"<span style='color: red; font-weight: 600'> {error} </span>",
-                        timeout=15000,
-                        message_type=MessageType.MESSAGE,
-                        height=100
                     )
                 )
             if data:
                 Global().communicate.notification.emit(
                     MessageData(
                         title="Creating folder",
-                        body=data,
                         timeout=15000,
-                        message_type=MessageType.MESSAGE,
-                        height=100
+                        body=data,
                     )
                 )
             Global().communicate.files__refresh.emit()
@@ -112,13 +108,11 @@ class UploadTools(QToolButton):
                     Global().communicate.notification.emit(
                         MessageData(
                             title="Uploading",
-                            body="Uploading",
                             message_type=MessageType.LOADING_MESSAGE,
                             message_catcher=worker.set_loading_widget
                         )
                     )
                     helper.setup(worker, worker.update_loading_widget)
-                    worker.loading_widget.setup_progress()
                     worker.start()
             else:
                 Global().communicate.files__refresh.emit()
@@ -126,20 +120,17 @@ class UploadTools(QToolButton):
             if error:
                 Global().communicate.notification.emit(
                     MessageData(
+                        timeout=15000,
                         title='Upload error',
                         body=f"<span style='color: red; font-weight: 600'> {error} </span>",
-                        timeout=15000,
-                        message_type=MessageType.MESSAGE,
-                        height=100
                     )
                 )
             if data:
                 Global().communicate.notification.emit(
                     MessageData(
                         title='Uploaded',
-                        body=data,
                         timeout=15000,
-                        message_type=MessageType.MESSAGE
+                        body=data,
                     )
                 )
 
@@ -201,11 +192,9 @@ class PathBar(QWidget):
             Global().communicate.path_toolbar__refresh.emit()
             Global().communicate.notification.emit(
                 MessageData(
+                    timeout=10000,
                     title="Opening folder",
                     body=f"<span style='color: red; font-weight: 600'> {error} </span>",
-                    timeout=10000,
-                    message_type=MessageType.MESSAGE,
-                    height=100
                 )
             )
         elif file and Adb.manager().go(file):
@@ -214,10 +203,8 @@ class PathBar(QWidget):
             Global().communicate.path_toolbar__refresh.emit()
             Global().communicate.notification.emit(
                 MessageData(
+                    timeout=10000,
                     title="Opening folder",
                     body="<span style='color: red; font-weight: 600'> Cannot open location </span>",
-                    timeout=10000,
-                    message_type=MessageType.MESSAGE,
-                    height=80
                 )
             )

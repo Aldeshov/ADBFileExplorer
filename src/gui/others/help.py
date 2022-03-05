@@ -33,7 +33,7 @@ class About(QWidget):
         about_text += '<br/>'
         about_text += "Open source application written in <i>Python</i><br/>"
         about_text += "UI Library: <i>PyQt5</i><br/>"
-        about_text += "Developer: Azat<br/>"
+        about_text += "Developer: Azat Aldeshov<br/>"
         link = 'https://github.com/Aldeshov/ADBFileExplorer'
         about_text += f"Github: <a target='_blank' href='{link}'>{link}</a>"
         about_label = QLabel(about_text, self)

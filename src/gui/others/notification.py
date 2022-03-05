@@ -14,26 +14,28 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from typing import Union
+
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import Qt, QTimer, QPoint, QSize, QPropertyAnimation, QAbstractAnimation
 from PyQt5.QtGui import QIcon, QPaintEvent, QPainter, QMovie
 from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QStyleOption, QStyle, \
     QGraphicsDropShadowEffect, QVBoxLayout, QScrollArea, QSizePolicy, QFrame, QGraphicsOpacityEffect, QProgressBar
-from typing import Union
 
 from core.configurations import Resource
-from data.models import MessageData, MessageType
+from data.models import MessageType
 
 
 class BaseMessage(QWidget):
-    def __init__(self, parent, height=125):
+    def __init__(self, parent):
         super(BaseMessage, self).__init__(parent)
-        self.box = QVBoxLayout()
-        self.__parent__ = parent
+        self.notification_center = parent
+        self.setLayout(QVBoxLayout(self))
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        self.layout().setSpacing(0)
 
         self.header = QHBoxLayout()
-        self.box.addLayout(self.header)
-        self.box.setSpacing(0)
+        self.layout().addLayout(self.header)
 
         self.opacity_effect = QGraphicsOpacityEffect(self)
         self.opacity_effect.setOpacity(0.)
@@ -44,17 +46,11 @@ class BaseMessage(QWidget):
         self.animation.setStartValue(0)
         self.animation.setEndValue(1)
 
-        self.box.setSpacing(0)
-        self.box.setContentsMargins(5, 2, 5, 2)
-        self.setLayout(self.box)
         self.setStyleSheet('QWidget { background: #d3d7cf; }')
-        self.setContentsMargins(0, 0, 0, 0)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-
-        if height < 75:
-            height = 75
-        self.setFixedSize(320, height)
+        self.setMinimumSize(self.sizeHint())
+        self.setMinimumHeight(80)
+        self.setFixedWidth(320)
         self.show()
 
     def paintEvent(self, event: QPaintEvent):
@@ -78,14 +74,10 @@ class BaseMessage(QWidget):
         self.animation.start()
         return super().show()
 
-    def close(self) -> bool:
-        self.__parent__.notifications.layout().removeWidget(self)
-        self.__parent__.resize(
-            self.__parent__.rect().width(),
-            self.__parent__.notifications.rect().height() - self.rect().height()
-        )
-        self.__parent__.update_position()
-        return super(BaseMessage, self).close()
+    def closeEvent(self, event: QtGui.QCloseEvent):
+        self.notification_center.remove(self)
+        self.deleteLater()
+        return event.accept()
 
     def create_loading(self):
         gif = QLabel(self)
@@ -100,17 +92,17 @@ class BaseMessage(QWidget):
 
     def create_title(self, text):
         title = QLabel(text, self)
-        title.setObjectName("title")
+        title.setAlignment(Qt.AlignVCenter)
         title.setStyleSheet("font-size: 16px; font-weight: bold;")
-        title.setContentsMargins(5, 0, 20, 0)
+        title.setContentsMargins(5, 0, 0, 0)
         self.header.addWidget(title, 1)
 
     def create_close(self):
         button = QPushButton(self)
         button.setObjectName("close")
-        button.setIcon(QIcon.fromTheme("window-close"))
+        button.setIcon(QIcon(Resource.icon_close))
         button.setFixedSize(32, 32)
-        button.setIconSize(QSize(16, 16))
+        button.setIconSize(QSize(10, 10))
         button.setStyleSheet(
             """
             QPushButton#close {
@@ -118,67 +110,56 @@ class BaseMessage(QWidget):
                 border: 0px;
             }
             QPushButton#close:hover {
-                background-color: #a6a8a3;
+                background-color: #AFA8FA;
                 border: 0px;
             }
             QPushButton#close:hover:!pressed {
-              border: 1px solid #928519;
+              border: 1px solid #584FBA;
             }
             QPushButton#close:pressed {
-              background-color: #928519;
+              background-color: #7C74DA;
             }
             """
         )
         button.clicked.connect(lambda: self.close() or None)
         self.header.addWidget(button)
 
+    def resizeEvent(self, event: QtGui.QResizeEvent):
+        self.setMinimumHeight(self.height())
+        return event.accept()
+
     def default_body_message(self, message):
         body = QLabel(message, self)
         body.setWordWrap(True)
-        body.setObjectName("body")
-        body.setContentsMargins(15, 5, 15, 5)
-        body.setStyleSheet(
-            """
-            QWidget#body {
-                font-size: 14px;
-                font-weight: normal;
-                padding: 0;
-            }
-            """
-        )
+        body.setContentsMargins(15, 5, 20, 10)
+        body.setStyleSheet("font-size: 14px; font-weight: normal;")
         return body
 
 
 class LoadingMessage(BaseMessage):
-    def __init__(self, parent, title: str, body: Union[QWidget, str], height=125):
-        super(LoadingMessage, self).__init__(parent, height)
+    def __init__(self, parent: QWidget, title: str, body: Union[QWidget, str] = None):
+        super(LoadingMessage, self).__init__(parent)
 
         self.label = None
         self.progress = None
         self.create_loading()
         self.create_title(title)
-        if isinstance(body, QWidget):
-            self.body = body
-        else:
-            self.body = self.default_body_message(body)
-        self.box.addWidget(self.body)
+        if not body:
+            self.label = QLabel("Waiting...", self)
+            self.label.setWordWrap(True)
+            self.label.setContentsMargins(10, 5, 10, 10)
 
-    def setup_progress(self):
-        # Remove and replace the body widget with progress widget
-        self.box.removeWidget(self.body)
-        self.body.close()
-        self.body.deleteLater()
+            self.progress = QProgressBar(self)
+            self.progress.setValue(0)
+            self.progress.setMaximumHeight(16)
+            self.progress.setAlignment(Qt.AlignCenter)
 
-        self.label = QLabel("Waiting...", self)
-        self.label.setWordWrap(True)
-        self.label.setContentsMargins(10, 0, 5, 2)
-        self.progress = QProgressBar(self)
-        self.progress.setValue(0)
-        self.progress.setMaximumHeight(16)
-        self.progress.setAlignment(Qt.AlignCenter)
-
-        self.box.addWidget(self.label)
-        self.box.addWidget(self.progress)
+            self.layout().addWidget(self.label)
+            self.layout().addWidget(self.progress)
+        elif isinstance(body, QWidget):
+            self.layout().addWidget(body)
+        elif isinstance(body, str):
+            self.layout().addWidget(self.default_body_message(body))
 
     def update_progress(self, title: str, progress: int):
         if self.label:
@@ -188,16 +169,15 @@ class LoadingMessage(BaseMessage):
 
 
 class Message(BaseMessage):
-    def __init__(self, parent, title: str, body: QWidget, timeout=5000, height=125):
-        super(Message, self).__init__(parent, height)
+    def __init__(self, parent: QWidget, title: str, body: Union[QWidget, str], timeout=5000):
+        super(Message, self).__init__(parent)
 
         self.create_title(title)
         self.create_close()
         if isinstance(body, QWidget):
-            self.body = body
-        else:
-            self.body = self.default_body_message(body)
-        self.box.addWidget(self.body)
+            self.layout().addWidget(body)
+        elif isinstance(body, str):
+            self.layout().addWidget(self.default_body_message(body))
 
         if timeout >= 1000:
             QTimer.singleShot(timeout, self.on_close)
@@ -222,64 +202,63 @@ class Message(BaseMessage):
 class NotificationCenter(QScrollArea):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.parent: QWidget = parent
-        self.notifications = QFrame()
-        self.notifications.setLayout(QVBoxLayout())
-        self.notifications.setContentsMargins(0, 0, 0, 0)
+        self.notifications = QFrame(self)
+        self.notifications.setLayout(QVBoxLayout(self.notifications))
+        self.notifications.installEventFilter(self)
+        self.notifications.layout().setSpacing(5)
         self.notifications.layout().addStretch()
 
         self.setWidgetResizable(True)
         self.setWidget(self.notifications)
-        self.setContentsMargins(0, 0, 5, 5)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.SubWindow)
-        self.setStyleSheet("border: 0px; background-color: transparent;")
+        self.setStyleSheet("QWidget { background: transparent; }")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.verticalScrollBar().rangeChanged.connect(lambda x, y: self.verticalScrollBar().setValue(y))
 
-        self.setMinimumWidth(350)
+        self.setMinimumSize(355, 20)
         self.update_position()
+        self.adjustSize()
         self.show()
 
+    def eventFilter(self, obj: QtCore.QObject, event: Union[QtCore.QEvent, QtGui.QResizeEvent]) -> bool:
+        if obj == self.notifications and event.type() == event.Resize:
+            if self.maximumHeight() > self.rect().height() < event.size().height():
+                self.resize(self.rect().width(), event.size().height() + self.notifications.layout().spacing())
+
+        return super(NotificationCenter, self).eventFilter(obj, event)
+
     def resizeEvent(self, event: QtGui.QResizeEvent):
-        self.update_position()
         super(NotificationCenter, self).resizeEvent(event)
+        self.update_position()
 
     def update_position(self):
         geometry = self.geometry()
         geometry.moveTopLeft(
             QPoint(
-                self.parent.rect().width() - self.rect().width() - 5,
-                self.parent.rect().height() - self.rect().height() - 5
+                self.parent().rect().width() - self.rect().width(),
+                self.parent().rect().height() - self.rect().height()
             )
         )
         self.setGeometry(geometry)
-        self.setMaximumHeight(self.parent.rect().height() - 15)
+        self.setMaximumHeight(self.parent().rect().height())
 
-    def append_notification(self, message_data: MessageData = None):
-        title = message_data.title
-        body = message_data.body
-        timeout = message_data.timeout
-        message_type = message_data.message_type
-        height = message_data.height
-        message_catcher = message_data.message_catcher
-
+    def append_notification(self, title: str, body: Union[QWidget, str], timeout=0, message_type=MessageType.MESSAGE):
         if message_type == MessageType.MESSAGE:
-            message = Message(self, title, body, timeout, height)
+            message = Message(self, title, body, timeout)
+            self.append(message)
+            return message
         elif message_type == MessageType.LOADING_MESSAGE:
-            message = LoadingMessage(self, title, body, height)
-        else:
-            message = BaseMessage(self, height)
-            message.create_title(title)
-            message.create_close()
-            if not isinstance(body, QWidget):
-                body = QLabel(str(body))
-                body.setContentsMargins(10, 5, 10, 5)
-                body.setWordWrap(True)
-            message.box.addWidget(body)
+            message = LoadingMessage(self, title, body)
+            self.append(message)
+            return message
 
+    def append(self, message: BaseMessage):
         self.notifications.layout().addWidget(message)
-        self.resize(self.rect().width(), self.notifications.height() + message.rect().height())
+        self.notifications.adjustSize()
         self.update_position()
 
-        if message_catcher:
-            message_catcher(message)
+    def remove(self, message: BaseMessage):
+        self.notifications.layout().removeWidget(message)
+        self.adjustSize()
+        self.update_position()

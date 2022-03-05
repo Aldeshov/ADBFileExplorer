@@ -74,10 +74,9 @@ class MenuBar(QMenuBar):
         if Adb.worker().work(worker):
             Global().communicate.notification.emit(
                 MessageData(
-                    title='Disconnecting',
+                    title='Disconnect',
                     body="Disconnecting from devices, please wait",
                     message_type=MessageType.LOADING_MESSAGE,
-                    height=80,
                     message_catcher=worker.set_loading_widget
                 )
             )
@@ -99,10 +98,9 @@ class MenuBar(QMenuBar):
             if Adb.worker().work(worker):
                 Global().communicate.notification.emit(
                     MessageData(
-                        title='Connecting',
+                        title='Connect',
                         body="Connecting to device via IP, please wait",
                         message_type=MessageType.LOADING_MESSAGE,
-                        height=80,
                         message_catcher=worker.set_loading_widget
                     )
                 )
@@ -115,22 +113,18 @@ class MenuBar(QMenuBar):
             Global().communicate.devices.emit()
             Global().communicate.notification.emit(
                 MessageData(
-                    title="Disconnecting",
-                    body=data,
+                    title="Disconnect",
                     timeout=15000,
-                    message_type=MessageType.MESSAGE,
-                    height=100
+                    body=data
                 )
             )
         if error:
             Global().communicate.devices.emit()
             Global().communicate.notification.emit(
                 MessageData(
-                    title="Disconnecting",
-                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
                     timeout=15000,
-                    message_type=MessageType.MESSAGE,
-                    height=100
+                    title="Disconnect",
+                    body=f"<span style='color: red; font-weight: 600'>{error}</span>"
                 )
             )
         Global().communicate.status_bar.emit('Operation: Disconnecting finished.', 3000)
@@ -142,24 +136,14 @@ class MenuBar(QMenuBar):
                 Global().communicate.files.emit()
             elif Adb.CORE == Adb.COMMON_ANDROID_ADB:
                 Global().communicate.devices.emit()
-            Global().communicate.notification.emit(
-                MessageData(
-                    title="Connecting to device",
-                    body=data,
-                    timeout=15000,
-                    message_type=MessageType.MESSAGE,
-                    height=100
-                )
-            )
+            Global().communicate.notification.emit(MessageData(title="Connecting to device", timeout=15000, body=data))
         if error:
             Global().communicate.devices.emit()
             Global().communicate.notification.emit(
                 MessageData(
-                    title="Connecting to device",
-                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
                     timeout=15000,
-                    message_type=MessageType.MESSAGE,
-                    height=100
+                    title="Connect to device",
+                    body=f"<span style='color: red; font-weight: 600'>{error}</span>"
                 )
             )
         Global().communicate.status_bar.emit('Operation: Connecting to device finished.', 3000)
@@ -187,7 +171,7 @@ class MainWindow(QMainWindow):
 
         # Important to add last to stay on top!
         self.notification_center = NotificationCenter(self)
-        Global().communicate.notification.connect(self.notification_center.append_notification)
+        Global().communicate.notification.connect(self.notify)
 
         # Welcome notification texts
         welcome_title = "Welcome to ADBFileExplorer!"
@@ -196,14 +180,17 @@ class MainWindow(QMainWindow):
                        " Good Luck!"
 
         Global().communicate.status_bar.emit('Ready', 5000)
-        Global().communicate.notification.emit(
-            MessageData(
-                title=welcome_title,
-                body=welcome_body,
-                timeout=30000,
-                message_type=MessageType.MESSAGE
-            )
+        Global().communicate.notification.emit(MessageData(title=welcome_title, body=welcome_body, timeout=30000))
+
+    def notify(self, data: MessageData):
+        message = self.notification_center.append_notification(
+            title=data.title,
+            body=data.body,
+            timeout=data.timeout,
+            message_type=data.message_type
         )
+        if data.message_catcher:
+            data.message_catcher(message)
 
     def closeEvent(self, event):
         if Adb.CORE == Adb.COMMON_ANDROID_ADB:
