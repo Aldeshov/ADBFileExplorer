@@ -17,6 +17,7 @@
 import sys
 
 from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
 
 from core.configurations import Resource
@@ -247,6 +248,18 @@ class FileItemWidget(BaseListItemWidget):
                 worker.start()
 
     def file_properties(self):
+        file, error = FileRepository.file(self.file.path)
+        if file:
+            self.file = file
+        if error:
+            Global().communicate.notification.emit(
+                MessageData(
+                    timeout=10000,
+                    title="Opening folder",
+                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                )
+            )
+
         info = f"<br/><u><b>{str(self.file)}</b></u><br/>"
         info += f"<pre>Name:        {self.file.name or '-'}</pre>"
         info += f"<pre>Owner:       {self.file.owner or '-'}</pre>"
@@ -259,4 +272,8 @@ class FileItemWidget(BaseListItemWidget):
         if self.file.type == FileType.LINK:
             info += f"<pre>Links to:    {self.file.link or '-'}</pre>"
 
-        QMessageBox.information(self, 'Properties', info)
+        properties = QMessageBox(self)
+        properties.setIconPixmap(QPixmap(self.icon_path).scaled(128, 128, Qt.KeepAspectRatio))
+        properties.setWindowTitle('Properties')
+        properties.setInformativeText(info)
+        properties.exec_()

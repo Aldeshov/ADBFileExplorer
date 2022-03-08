@@ -168,7 +168,7 @@ class PathBar(QWidget):
         self.path_go = QToolButton()
         self.path_go.setFixedHeight(32)
         self.path_go.setFixedWidth(32)
-        self.action = QAction(QIcon(Resource.icon_go), 'Go', self)
+        self.action = QAction(QIcon(Resource.icon_arrow), 'Go', self)
         self.action.triggered.connect(self.__action__)
         self.path_go.setDefaultAction(self.action)
         self.layout.addWidget(self.path_go)

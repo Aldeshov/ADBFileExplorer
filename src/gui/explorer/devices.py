@@ -72,9 +72,9 @@ class DeviceItemWidget(BaseListItemWidget):
         super(DeviceItemWidget, self).__init__()
         self.device = device
         if device.type == DeviceType.DEVICE:
-            self.layout.addWidget(self.icon(Resource.icon_phone))
+            self.layout.addWidget(self.icon(Resource.icon_phone, width=32, height=32))
         else:
-            self.layout.addWidget(self.icon(Resource.icon_unknown))
+            self.layout.addWidget(self.icon(Resource.icon_phone_unknown, width=32, height=32))
 
         self.layout.addWidget(self.name(device.name))
         self.layout.addWidget(self.property(device.id))

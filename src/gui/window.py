@@ -39,12 +39,12 @@ class MenuBar(QMenuBar):
         self.file_menu = self.addMenu('&File')
         self.help_menu = self.addMenu('&Help')
 
-        connect_action = QAction(QIcon(Resource.icon_connect), '&Connect', self)
+        connect_action = QAction(QIcon(Resource.icon_link), '&Connect', self)
         connect_action.setShortcut('Alt+C')
         connect_action.triggered.connect(self.connect_device)
         self.file_menu.addAction(connect_action)
 
-        disconnect_action = QAction(QIcon(Resource.icon_disconnect), '&Disconnect', self)
+        disconnect_action = QAction(QIcon(Resource.icon_no_link), '&Disconnect', self)
         disconnect_action.setShortcut('Alt+X')
         disconnect_action.triggered.connect(self.disconnect)
         self.file_menu.addAction(disconnect_action)
@@ -54,7 +54,7 @@ class MenuBar(QMenuBar):
         devices_action.triggered.connect(Global().communicate.devices.emit)
         self.file_menu.addAction(devices_action)
 
-        exit_action = QAction(QIcon(Resource.icon_exit), '&Exit', self)
+        exit_action = QAction('&Exit', self)
         exit_action.setShortcut('Alt+Q')
         exit_action.triggered.connect(qApp.quit)
         self.file_menu.addAction(exit_action)

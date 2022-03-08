@@ -84,7 +84,7 @@ class BaseListItemWidget(QWidget):
 
     @staticmethod
     def icon(path: str, **kwargs):
-        icon = BaseIconWidget(path, width=kwargs.get("width") or 25, height=kwargs.get("height") or 25)
+        icon = BaseIconWidget(path, width=kwargs.get("width") or 28, height=kwargs.get("height") or 28)
         icon.setContentsMargins(kwargs.get("margin") or 5, 0, 0, 0)
         policy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         policy.setHorizontalStretch(1)
