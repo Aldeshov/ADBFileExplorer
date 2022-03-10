@@ -16,13 +16,13 @@
 
 from PyQt5.QtCore import Qt
 
-from core.configurations import Resource
-from core.daemons import Adb
+from core.configurations import Resources
+from core.main import Adb
 from core.managers import Global
-from data.models import Device, DeviceType, MessageData, MessageType
-from helpers.tools import AsyncRepositoryWorker
+from data.models import Device, DeviceType, MessageData
 from data.repositories import DeviceRepository
 from gui.abstract.base import BaseListWidget, BaseListItemWidget, BaseListHeaderWidget
+from helpers.tools import AsyncRepositoryWorker
 
 
 class DeviceHeaderWidget(BaseListHeaderWidget):
@@ -64,7 +64,7 @@ class DeviceListWidget(BaseListWidget):
         for device in devices:
             item = DeviceItemWidget(device)
             widgets.append(item)
-        self.load(widgets, "There is no connected devices", False)
+        self.load(widgets, "No connected devices", False)
 
 
 class DeviceItemWidget(BaseListItemWidget):
@@ -72,9 +72,9 @@ class DeviceItemWidget(BaseListItemWidget):
         super(DeviceItemWidget, self).__init__()
         self.device = device
         if device.type == DeviceType.DEVICE:
-            self.layout.addWidget(self.icon(Resource.icon_phone, width=32, height=32))
+            self.layout.addWidget(self.icon(Resources.icon_phone, width=32, height=32))
         else:
-            self.layout.addWidget(self.icon(Resource.icon_phone_unknown, width=32, height=32))
+            self.layout.addWidget(self.icon(Resources.icon_phone_unknown, width=32, height=32))
 
         self.layout.addWidget(self.name(device.name))
         self.layout.addWidget(self.property(device.id))

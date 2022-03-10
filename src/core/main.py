@@ -19,6 +19,7 @@ from typing import Union
 
 import adb_shell
 
+from core.configurations import Application
 from core.managers import PythonADBManager, AndroidADBManager, WorkersManager
 from helpers.tools import Singleton
 from services import adb
@@ -27,23 +28,23 @@ from services import adb
 class Adb:
     __metaclass__ = Singleton
 
-    PYTHON_ADB = 0  # Python library `adb-shell`
-    COMMON_ANDROID_ADB = 1  # Android external tool `adb`
+    PYTHON_ADB_SHELL = 0  # Python library `adb-shell`
+    EXTERNAL_TOOL_ADB = 1  # Command-line tool `adb`
 
-    CORE = PYTHON_ADB  # PYTHON_ADB / COMMON_ANDROID_ADB
+    CORE = PYTHON_ADB_SHELL
 
-    def __init__(self):
-        if self.CORE == self.PYTHON_ADB:
-            # Exiting from adb
+    @classmethod
+    def start(cls):
+        print(Application.NOTICE)
+        if cls.CORE == cls.PYTHON_ADB_SHELL:
             if adb.kill_server().IsSuccessful:
                 print("ADB Server stopped.")
 
             print(f'Using Python `adb-shell` version {adb_shell.__version__}')
 
-        elif self.CORE == self.COMMON_ANDROID_ADB and adb.validate():
+        elif cls.CORE == cls.EXTERNAL_TOOL_ADB and adb.validate():
             print(adb.version().OutputData)
 
-            # Start adb server
             adb_server = adb.start_server()
             if adb_server.ErrorData:
                 print(adb_server.ErrorData, file=sys.stderr)
@@ -52,7 +53,7 @@ class Adb:
 
     @classmethod
     def stop(cls):
-        if cls.CORE == cls.PYTHON_ADB:
+        if cls.CORE == cls.PYTHON_ADB_SHELL:
             # Closing device connection
             if PythonADBManager.device and PythonADBManager.device.available:
                 name = PythonADBManager.get_device().name if PythonADBManager.get_device() else "Unknown"
@@ -60,18 +61,32 @@ class Adb:
                 PythonADBManager.device.close()
             return True
 
-        elif cls.CORE == cls.COMMON_ANDROID_ADB:
+        elif cls.CORE == cls.EXTERNAL_TOOL_ADB:
             if adb.kill_server().IsSuccessful:
                 print("ADB Server stopped")
             return True
 
     @classmethod
     def manager(cls) -> Union[AndroidADBManager, PythonADBManager]:
-        if cls.CORE == cls.PYTHON_ADB:
+        if cls.CORE == cls.PYTHON_ADB_SHELL:
             return PythonADBManager()
-        elif cls.CORE == cls.COMMON_ANDROID_ADB:
+        elif cls.CORE == cls.EXTERNAL_TOOL_ADB:
             return AndroidADBManager()
 
     @classmethod
     def worker(cls) -> WorkersManager:
         return WorkersManager()
+
+    @classmethod
+    def set_core(cls, core: int):
+        if core == cls.PYTHON_ADB_SHELL:
+            cls.CORE = cls.PYTHON_ADB_SHELL
+        elif core == cls.EXTERNAL_TOOL_ADB:
+            cls.CORE = cls.EXTERNAL_TOOL_ADB
+
+    @classmethod
+    def current_core(cls):
+        if cls.CORE == cls.PYTHON_ADB_SHELL:
+            return f"{Adb.CORE=}, PYTHON_ADB_SHELL"
+        elif cls.CORE == cls.EXTERNAL_TOOL_ADB:
+            return f"{Adb.CORE=}, EXTERNAL_TOOL_ADB"

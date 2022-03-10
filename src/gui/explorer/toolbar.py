@@ -17,8 +17,8 @@
 from PyQt5.QtGui import QIcon, QFocusEvent
 from PyQt5.QtWidgets import QToolButton, QMenu, QWidget, QAction, QFileDialog, QInputDialog, QLineEdit, QHBoxLayout
 
-from core.configurations import Resource
-from core.daemons import Adb
+from core.configurations import Resources
+from core.main import Adb
 from core.managers import Global
 from data.models import MessageData, MessageType
 from data.repositories import FileRepository
@@ -31,19 +31,19 @@ class UploadTools(QToolButton):
         super(UploadTools, self).__init__(parent)
         self.menu = QMenu(self)
         self.uploader = self.FilesUploader()
-        self.show_action = QAction(QIcon(Resource.icon_plus), 'Upload', self)
+        self.show_action = QAction(QIcon(Resources.icon_plus), 'Upload', self)
         self.show_action.triggered.connect(self.showMenu)
         self.setDefaultAction(self.show_action)
 
-        upload_files = QAction(QIcon(Resource.icon_files_upload), '&Upload files', self)
+        upload_files = QAction(QIcon(Resources.icon_files_upload), '&Upload files', self)
         upload_files.triggered.connect(self.__action_upload_files__)
         self.menu.addAction(upload_files)
 
-        upload_directory = QAction(QIcon(Resource.icon_folder_upload), '&Upload directory', self)
+        upload_directory = QAction(QIcon(Resources.icon_folder_upload), '&Upload directory', self)
         upload_directory.triggered.connect(self.__action_upload_directory__)
         self.menu.addAction(upload_directory)
 
-        upload_files = QAction(QIcon(Resource.icon_folder_create), '&Create folder', self)
+        upload_files = QAction(QIcon(Resources.icon_folder_create), '&Create folder', self)
         upload_files.triggered.connect(self.__action_create_folder__)
         self.menu.addAction(upload_files)
         self.setMenu(self.menu)
@@ -138,7 +138,7 @@ class UploadTools(QToolButton):
 class ParentButton(QToolButton):
     def __init__(self, parent):
         super(ParentButton, self).__init__(parent)
-        self.parent_action = QAction(QIcon(Resource.icon_up), 'Parent', self)
+        self.parent_action = QAction(QIcon(Resources.icon_up), 'Parent', self)
         self.parent_action.triggered.connect(self.__action__)
         self.parent_action.setShortcut('Escape')
         self.setDefaultAction(self.parent_action)
@@ -168,7 +168,7 @@ class PathBar(QWidget):
         self.path_go = QToolButton()
         self.path_go.setFixedHeight(32)
         self.path_go.setFixedWidth(32)
-        self.action = QAction(QIcon(Resource.icon_arrow), 'Go', self)
+        self.action = QAction(QIcon(Resources.icon_arrow), 'Go', self)
         self.action.triggered.connect(self.__action__)
         self.path_go.setDefaultAction(self.action)
         self.layout.addWidget(self.path_go)

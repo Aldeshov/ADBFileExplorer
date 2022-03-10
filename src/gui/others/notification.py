@@ -22,7 +22,7 @@ from PyQt5.QtGui import QIcon, QPaintEvent, QPainter, QMovie
 from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QStyleOption, QStyle, \
     QGraphicsDropShadowEffect, QVBoxLayout, QScrollArea, QSizePolicy, QFrame, QGraphicsOpacityEffect, QProgressBar
 
-from core.configurations import Resource
+from core.configurations import Resources
 from data.models import MessageType
 
 
@@ -81,7 +81,7 @@ class BaseMessage(QWidget):
 
     def create_loading(self):
         gif = QLabel(self)
-        movie = QMovie(Resource.anim_loading)
+        movie = QMovie(Resources.anim_loading)
         movie.setScaledSize(QSize(24, 24))
         gif.setContentsMargins(5, 0, 5, 0)
         gif.setAlignment(Qt.AlignCenter)
@@ -93,34 +93,17 @@ class BaseMessage(QWidget):
     def create_title(self, text):
         title = QLabel(text, self)
         title.setAlignment(Qt.AlignVCenter)
-        title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        title.setStyleSheet("QLabel { font-size: 16px; font-weight: bold; }")
         title.setContentsMargins(5, 0, 0, 0)
         self.header.addWidget(title, 1)
 
     def create_close(self):
         button = QPushButton(self)
         button.setObjectName("close")
-        button.setIcon(QIcon(Resource.icon_close))
+        button.setIcon(QIcon(Resources.icon_close))
         button.setFixedSize(32, 32)
         button.setIconSize(QSize(10, 10))
-        button.setStyleSheet(
-            """
-            QPushButton#close {
-                background-color: #c4c8c0;
-                border: 0px;
-            }
-            QPushButton#close:hover {
-                background-color: #AFA8FA;
-                border: 0px;
-            }
-            QPushButton#close:hover:!pressed {
-              border: 1px solid #584FBA;
-            }
-            QPushButton#close:pressed {
-              background-color: #7C74DA;
-            }
-            """
-        )
+        button.setStyleSheet(Resources.read_string_from_file(Resources.style_notification_button))
         button.clicked.connect(lambda: self.close() or None)
         self.header.addWidget(button)
 
@@ -212,7 +195,7 @@ class NotificationCenter(QScrollArea):
         self.setWidget(self.notifications)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.SubWindow)
-        self.setStyleSheet("QWidget { background: transparent; }")
+        self.setStyleSheet("QWidget { background: transparent; border: 0; }")
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.verticalScrollBar().rangeChanged.connect(lambda x, y: self.verticalScrollBar().setValue(y))
 

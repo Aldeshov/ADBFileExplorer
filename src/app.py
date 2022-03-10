@@ -18,26 +18,19 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from core.configurations import Application
-from core.daemons import Adb
+from core.configurations import Resources
+from core.main import Adb
 from gui.window import MainWindow
 
 if __name__ == '__main__':
-    print(Application.NOTICE)
+    adb = Adb()
+    # adb.set_core(Adb.EXTERNAL_TOOL_ADB)
+    adb.start()
 
-    Adb()  # Start adb
-
-    # Creating new Application
     app = QApplication(sys.argv)
 
-    # Creating new window
     window = MainWindow()
-    window.setStyleSheet(
-        "QWidget {"
-        "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, "
-        "Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;"
-        "}"
-    )
+    window.setStyleSheet(Resources.read_string_from_file(Resources.style_window))
     window.show()
 
     sys.exit(app.exec_())

@@ -22,7 +22,7 @@ from typing import List
 
 from usb1 import USBContext
 
-from core.configurations import Default
+from core.configurations import Defaults
 from core.managers import PythonADBManager
 from data.models import Device, File, FileType
 from helpers.converters import __converter_to_permissions_default__
@@ -38,7 +38,7 @@ class FileRepository:
             return None, "Device not available!"
         try:
             path = PythonADBManager.clear_path(path)
-            mode, size, mtime = PythonADBManager.device.stat(path.replace(' ', r'\ '))
+            mode, size, mtime = PythonADBManager.device.stat(path)
             file = File(
                 name=os.path.basename(os.path.normpath(path)),
                 size=size,
@@ -105,8 +105,45 @@ class FileRepository:
             return files, error
 
     @classmethod
+    def rename(cls, file: File, name: str) -> (str, str):
+        if not PythonADBManager.device:
+            return None, "No device selected!"
+        if not PythonADBManager.device.available:
+            return None, "Device not available!"
+        if name.__contains__('/') or name.__contains__('\\'):
+            return None, "Invalid name"
+
+        try:
+            args = [ShellCommand.MV, file.path, file.location + name]
+            response = PythonADBManager.device.shell(shlex.join(args))
+            if response:
+                return None, response
+            return None, None
+        except BaseException as error:
+            logging.error(f"Unexpected {error=}, {type(error)=}")
+            return None, error
+
+    @classmethod
+    def delete(cls, file: File) -> (str, str):
+        if not PythonADBManager.device:
+            return None, "No device selected!"
+        if not PythonADBManager.device.available:
+            return None, "Device not available!"
+        try:
+            args = [ShellCommand.RM, file.path]
+            if file.isdir:
+                args = ShellCommand.RM_DIR_FORCE + [file.path]
+            response = PythonADBManager.device.shell(shlex.join(args))
+            if response:
+                return None, response
+            return f"{'Folder' if file.isdir else 'File'} '{file.path}' has been deleted", None
+        except BaseException as error:
+            logging.error(f"Unexpected {error=}, {type(error)=}")
+            return None, error
+
+    @classmethod
     def download(cls, progress_callback: callable, source: str) -> (str, str):
-        destination = Default.device_downloads_path(PythonADBManager.get_device())
+        destination = Defaults.device_downloads_path(PythonADBManager.get_device())
         return cls.download_to(progress_callback, source, destination)
 
     class UpDownHelper:
@@ -148,7 +185,7 @@ class FileRepository:
             return None, "Device not available!"
 
         try:
-            args = [ShellCommand.MKDIR, f'{PythonADBManager.path()}{name}'.replace(' ', r"\ ")]
+            args = [ShellCommand.MKDIR, f'{PythonADBManager.path()}{name}']
             response = PythonADBManager.device.shell(shlex.join(args))
             return None, response
 

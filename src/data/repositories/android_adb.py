@@ -16,7 +16,7 @@
 
 from typing import List
 
-from core.configurations import Default
+from core.configurations import Defaults
 from core.managers import AndroidADBManager
 from data.models import FileType, Device, File
 from helpers.converters import convert_to_devices, convert_to_file, convert_to_file_list_a
@@ -74,8 +74,26 @@ class FileRepository:
         return files, response.ErrorData
 
     @classmethod
+    def rename(cls, file: File, name) -> (str, str):
+        if name.__contains__('/') or name.__contains__('\\'):
+            return None, "Invalid name"
+        args = [adb.ShellCommand.MV, file.path.replace(' ', r'\ '), (file.location + name).replace(' ', r'\ ')]
+        response = adb.shell(AndroidADBManager.get_device().id, args)
+        return None, response.ErrorData or response.OutputData
+
+    @classmethod
+    def delete(cls, file: File) -> (str, str):
+        args = [adb.ShellCommand.RM, file.path.replace(' ', r'\ ')]
+        if file.isdir:
+            args = adb.ShellCommand.RM_DIR_FORCE + [file.path.replace(' ', r'\ ')]
+        response = adb.shell(AndroidADBManager.get_device().id, args)
+        if not response.IsSuccessful or response.OutputData:
+            return None, response.ErrorData or response.OutputData
+        return f"{'Folder' if file.isdir else 'File'} '{file.path}' has been deleted", None
+
+    @classmethod
     def download(cls, progress_callback: callable, source: str) -> (str, str):
-        destination = Default.device_downloads_path(AndroidADBManager.get_device())
+        destination = Defaults.device_downloads_path(AndroidADBManager.get_device())
         return cls.download_to(progress_callback, source, destination)
 
     class UpDownHelper:

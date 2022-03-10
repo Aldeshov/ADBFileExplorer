@@ -16,7 +16,7 @@
 
 from PyQt5.QtWidgets import QWidget, QScrollArea, QVBoxLayout, QHBoxLayout, QSizePolicy
 
-from core.daemons import Adb
+from core.main import Adb
 from core.managers import Global
 from gui.explorer.devices import DeviceHeaderWidget, DeviceListWidget
 from gui.explorer.files import FileHeaderWidget, FileListWidget

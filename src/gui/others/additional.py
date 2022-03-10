@@ -19,7 +19,7 @@ from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QMovie
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QLabel
 
-from core.configurations import Resource
+from core.configurations import Resources
 
 
 class LoadingWidget(QWidget):
@@ -29,7 +29,7 @@ class LoadingWidget(QWidget):
         self.setLayout(self.layout)
 
         self.gif = QLabel(self)
-        self.movie = QMovie(Resource.anim_loading)
+        self.movie = QMovie(Resources.anim_loading)
         self.movie.setScaledSize(QSize(96, 96))
         self.gif.setAlignment(Qt.AlignCenter)
         self.gif.setMovie(self.movie)

@@ -82,6 +82,6 @@ class NotifyExample(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    toastExample = NotifyExample()
-    toastExample.show()
+    example = NotifyExample()
+    example.show()
     app.exec_()

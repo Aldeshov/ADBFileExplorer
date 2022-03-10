@@ -17,8 +17,8 @@
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QInputDialog, QMenuBar, QMessageBox
 
-from core.configurations import Resource
-from core.daemons import Adb
+from core.configurations import Resources
+from core.main import Adb
 from core.managers import Global
 from data.models import MessageData, MessageType
 from data.repositories import DeviceRepository
@@ -39,17 +39,17 @@ class MenuBar(QMenuBar):
         self.file_menu = self.addMenu('&File')
         self.help_menu = self.addMenu('&Help')
 
-        connect_action = QAction(QIcon(Resource.icon_link), '&Connect', self)
+        connect_action = QAction(QIcon(Resources.icon_link), '&Connect', self)
         connect_action.setShortcut('Alt+C')
         connect_action.triggered.connect(self.connect_device)
         self.file_menu.addAction(connect_action)
 
-        disconnect_action = QAction(QIcon(Resource.icon_no_link), '&Disconnect', self)
+        disconnect_action = QAction(QIcon(Resources.icon_no_link), '&Disconnect', self)
         disconnect_action.setShortcut('Alt+X')
         disconnect_action.triggered.connect(self.disconnect)
         self.file_menu.addAction(disconnect_action)
 
-        devices_action = QAction(QIcon(Resource.icon_phone), '&Show devices', self)
+        devices_action = QAction(QIcon(Resources.icon_phone), '&Show devices', self)
         devices_action.setShortcut('Alt+D')
         devices_action.triggered.connect(Global().communicate.devices.emit)
         self.file_menu.addAction(devices_action)
@@ -132,9 +132,9 @@ class MenuBar(QMenuBar):
     @staticmethod
     def __async_response_connect(data, error):
         if data:
-            if Adb.CORE == Adb.PYTHON_ADB:
+            if Adb.CORE == Adb.PYTHON_ADB_SHELL:
                 Global().communicate.files.emit()
-            elif Adb.CORE == Adb.COMMON_ANDROID_ADB:
+            elif Adb.CORE == Adb.EXTERNAL_TOOL_ADB:
                 Global().communicate.devices.emit()
             Global().communicate.notification.emit(MessageData(title="Connecting to device", timeout=15000, body=data))
         if error:
@@ -160,7 +160,7 @@ class MainWindow(QMainWindow):
         self.resize(640, 480)
         self.setMinimumWidth(480)
         self.setMinimumHeight(360)
-        self.setWindowIcon(QIcon(Resource.logo))
+        self.setWindowIcon(QIcon(Resources.icon_logo))
         self.setWindowTitle('ADB File Explorer')
 
         # Show Devices Widget
@@ -175,9 +175,9 @@ class MainWindow(QMainWindow):
 
         # Welcome notification texts
         welcome_title = "Welcome to ADBFileExplorer!"
-        welcome_body = "Here you can see the list of your connected adb devices. Click one of them to see files." \
-                       " Also you can connect to devices via TCP in the File tab -> Connect -> then enter Device IP." \
-                       " Good Luck!"
+        welcome_body = f"Here you can see the list of your connected adb devices. Click one of them to see files.<br/>"\
+                       f"Current selected core: <strong>{Adb.current_core()}</strong><br/>" \
+                       f"To change it <code style='color: blue'>adb.set_core()</code> in <code>app.py</code>"
 
         Global().communicate.status_bar.emit('Ready', 5000)
         Global().communicate.notification.emit(MessageData(title=welcome_title, body=welcome_body, timeout=30000))
@@ -193,13 +193,13 @@ class MainWindow(QMainWindow):
             data.message_catcher(message)
 
     def closeEvent(self, event):
-        if Adb.CORE == Adb.COMMON_ANDROID_ADB:
+        if Adb.CORE == Adb.EXTERNAL_TOOL_ADB:
             reply = QMessageBox.question(self, 'ADB Server', "Do you want to kill adb server?",
                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
             if reply == QMessageBox.Yes:
                 Adb.stop()
-        elif Adb.CORE == Adb.PYTHON_ADB:
+        elif Adb.CORE == Adb.PYTHON_ADB_SHELL:
             Adb.stop()
 
         event.accept()

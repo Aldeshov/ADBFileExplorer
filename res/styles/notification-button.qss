@@ -1,0 +1,17 @@
+QPushButton#close {
+    background-color: #c4c8c0;
+    border: 0;
+}
+
+QPushButton#close:hover {
+    background-color: #AFA8FA;
+    border: 0;
+}
+
+QPushButton#close:hover:!pressed {
+    border: 1px solid #584FBA;
+}
+
+QPushButton#close:pressed {
+    background-color: #7C74DA;
+}

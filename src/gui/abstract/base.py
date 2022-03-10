@@ -17,9 +17,10 @@
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QPaintEvent, QPainter, QPixmap, QMovie
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QStyleOption, QStyle, QSizePolicy, QVBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QStyleOption, QStyle, QSizePolicy, QVBoxLayout, QGridLayout, \
+    QLineEdit
 
-from core.configurations import Resource
+from core.configurations import Resources
 
 
 class BaseIconWidget(QLabel):
@@ -101,6 +102,17 @@ class BaseListItemWidget(QWidget):
         return name
 
     @staticmethod
+    def editable_name(label: str, **kwargs):
+        edit = QLineEdit()
+        edit.setStyleSheet("QLineEdit { background: white; padding 0; }")
+        policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        policy.setHorizontalStretch(kwargs.get("stretch") or 4)
+        edit.setSizePolicy(policy)
+        edit.setVisible(False)
+        edit.setText(label)
+        return edit
+
+    @staticmethod
     def property(label, **kwargs):
         prop = QLabel(label)
         if kwargs.get("font_style"):
@@ -119,7 +131,7 @@ class BaseListItemWidget(QWidget):
     @staticmethod
     def separator(width=1):
         item = QLabel()
-        item.setStyleSheet("background-color: #CACACA")
+        item.setStyleSheet("QLabel { background-color: #CACACA }")
         item.setMaximumWidth(width)
         return item
 
@@ -148,7 +160,7 @@ class BaseListWidget(QWidget):
     def loading(self):
         self.clear()
         gif = QLabel(self)
-        movie = QMovie(Resource.anim_loading)
+        movie = QMovie(Resources.anim_loading)
         movie.setScaledSize(QSize(48, 48))
         gif.setAlignment(Qt.AlignCenter)
         gif.setMovie(movie)

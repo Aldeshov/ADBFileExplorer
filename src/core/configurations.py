@@ -18,13 +18,18 @@ import os
 import pathlib
 import platform
 
+from PyQt5.QtCore import QFile, QIODevice, QTextStream
+
 from data.models import Device
 from helpers.tools import Singleton
 
 
 class Application:
-    __version__ = '1.0.0'
+    __version__ = '1.1.0'
     __metaclass__ = Singleton
+
+    def __init__(self):
+        print(Application.NOTICE)
 
     NOTICE = f"""\033[0;32m
         ADB File Explorer v{__version__} Copyright (C) 2022  Azat Aldeshov
@@ -37,7 +42,7 @@ class Application:
     PATH = pathlib.Path(__file__).parent.parent.parent.resolve()
 
 
-class Default:
+class Defaults:
     __metaclass__ = Singleton
 
     adb_path = os.path.join(Application.PATH, "adb")
@@ -45,27 +50,30 @@ class Default:
 
     @staticmethod
     def device_downloads_path(device: Device) -> str:
-        if not os.path.isdir(Default.downloads_path):
-            os.mkdir(Default.downloads_path)
+        if not os.path.isdir(Defaults.downloads_path):
+            os.mkdir(Defaults.downloads_path)
         if device:
-            downloads_path = os.path.join(Default.downloads_path, device.name)
+            downloads_path = os.path.join(Defaults.downloads_path, device.name)
             if not os.path.isdir(downloads_path):
                 os.mkdir(downloads_path)
             return downloads_path
-        return Default.downloads_path
+        return Defaults.downloads_path
 
 
-class Settings(Default):
+class Settings(Defaults):
     adb__custom_path_enabled = True
     adb__custom_path_value = "adb"
 
 
-class Resource:
+class Resources:
     __metaclass__ = Singleton
 
     path = os.path.join(Application.PATH, 'res')
 
-    logo = os.path.join(path, 'icons', 'logo.svg')
+    style_window = os.path.join(path, 'styles', 'window.qss')
+    style_notification_button = os.path.join(path, 'styles', 'notification-button.qss')
+
+    icon_logo = os.path.join(path, 'icons', 'logo.svg')
     icon_link = os.path.join(path, 'icons', 'link.svg')
     icon_no_link = os.path.join(path, 'icons', 'no_link.svg')
     icon_close = os.path.join(path, 'icons', 'close.svg')
@@ -83,4 +91,14 @@ class Resource:
     icon_files_upload = os.path.join(path, 'icons', 'files', 'actions', 'files_upload.svg')
     icon_folder_upload = os.path.join(path, 'icons', 'files', 'actions', 'folder_upload.svg')
     icon_folder_create = os.path.join(path, 'icons', 'files', 'actions', 'folder_create.svg')
+
     anim_loading = os.path.join(path, 'anim', 'loading.gif')
+
+    @staticmethod
+    def read_string_from_file(path: str):
+        file = QFile(path)
+        if file.open(QIODevice.ReadOnly | QIODevice.Text):
+            text = QTextStream(file).readAll()
+            file.close()
+            return text
+        return ''

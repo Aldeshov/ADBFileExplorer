@@ -1,13 +1,13 @@
 # ADB File Explorer `tool` `python`
 
-Simple File explorer for adb devices. Uses python `adb-shell` library or external `adb` (android-tool).
+Simple File Explorer for adb devices. Uses python library [`adb-shell`](https://github.com/JeffLIrion/adb_shell) or command-line tool [`adb`](https://developer.android.com/studio/command-line/adb?hl=ru).
+
 Features:
 
 * List of adb devices
 * Connect via IP (TCP)
-* List of files / folders / other types of files
-* Pulling files / folders
-* Pushing files / folders
+* Listing / Pulling / Pushing files
+* Renaming and Deleting files
 
 ## Screenshots
 
@@ -21,48 +21,40 @@ Files & Notifications
 
 ## Requirements
 
-* `Python >= 3.8` (other versions not tested)
-* Virtual environment (optional)
-* `pip install PyQt5 libusb1 adb-shell`
-* `adb` (android-tool) should exist in project root folder or in `PATH` variables
+* `Python3` (below version 3.8 not tested)
+```shell
+pip install PyQt5 libusb1 adb-shell
+```
+* `adb` (binary) should exist in project root folder or in `PATH` variables
 
-## Project
+## Launch
 
-`res` folder - project resources
-
-`src` folder - project source code
-
-`src` / `app.py` file - start point of the application
-
-## Intro
-
-File `src` / `core` / `daemons.py`
+File `src` / `app.py`
 
 ```python
-class Adb:
-...
-    CORE = PYTHON_ADB
-    # PYTHON_ADB to use library `adb-shell`
-    # COMMON_ANDROID_ADB to use Android external tool `adb`
-...
+from core.main import Adb
+# ...
+if __name__ == '__main__':
+    adb = Adb()
+    adb.set_core(Adb.EXTERNAL_TOOL_ADB)  # To use command-line tool `adb`
+    adb.start()
+# ...
 ```
 
-`python src/app.py` - to start application
+```shell
+python src/app.py # To start application
+```
 
-## `adb` vs `adb-shell`
+## Attention
 
-[+] `adb` faster than python library and can perform multiple operations at the same time 
-
-[-] `adb` harder to convert output data from command line (progress callback does not work properly)
-
-[+] `adb-shell` no need of adb tool or daemon, progress callback for pulling / pushing exists and works properly
-
-[-] `adb-shell` only one command per device at a time, more dependencies, slower due to `python`, etc...
+Application by default uses `adb-shell`.
+There may be problems with listing, pushing, pulling files using `adb-shell`.
+Use the adb command line tool for a better experience
 
 ## License
 
 ```
-ADB File Explorer `tool` `python`
+ADB File Explorer `python-tool`
 Copyright (C) 2022  Azat Aldeshov
 
 This program is free software: you can redistribute it and/or modify
@@ -78,16 +70,3 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ```
-
-## Additional
-
-```python
-# TODO("New features")
-# [TAB] File -> Settings
-# [TAB] Tools -> APK Manager
-# [ACTION] File Properties -> Copy file
-# [ACTION] File Properties -> Move file
-# [ACTION] File Properties -> Rename file
-# [ACTION] File Properties -> Delete file
-```
-

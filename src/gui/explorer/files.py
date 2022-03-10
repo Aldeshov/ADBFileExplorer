@@ -16,12 +16,13 @@
 
 import sys
 
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
 
-from core.configurations import Resource
-from core.daemons import Adb
+from core.configurations import Resources
+from core.main import Adb
 from core.managers import Global
 from data.models import File, FileType, MessageData, MessageType
 from data.repositories import FileRepository
@@ -95,6 +96,9 @@ class FileItemWidget(BaseListItemWidget):
     def __init__(self, parent, file: File):
         super(FileItemWidget, self).__init__(parent)
         self.file = file
+        self.name_widget = self.name(self.file.name)
+        self.name_edit_widget = self.editable_name(self.file.name)
+        self.name_edit_widget.installEventFilter(self)
 
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
@@ -104,7 +108,11 @@ class FileItemWidget(BaseListItemWidget):
         )
 
         self.layout.addWidget(
-            self.name(self.file.name)
+            self.name_widget
+        )
+
+        self.layout.addWidget(
+            self.name_edit_widget
         )
 
         self.layout.addWidget(self.separator())
@@ -132,16 +140,16 @@ class FileItemWidget(BaseListItemWidget):
     @property
     def icon_path(self):
         if self.file.type == FileType.DIRECTORY:
-            return Resource.icon_folder
+            return Resources.icon_folder
         elif self.file.type == FileType.FILE:
-            return Resource.icon_file
+            return Resources.icon_file
         elif self.file.type == FileType.LINK:
             if self.file.link_type == FileType.DIRECTORY:
-                return Resource.icon_link_folder
+                return Resources.icon_link_folder
             elif self.file.link_type == FileType.FILE:
-                return Resource.icon_link_file
-            return Resource.icon_link_file_unknown
-        return Resource.icon_file_unknown
+                return Resources.icon_link_file
+            return Resources.icon_link_file_unknown
+        return Resources.icon_file_unknown
 
     def mouseReleaseEvent(self, event):
         super(FileItemWidget, self).mouseReleaseEvent(event)
@@ -163,11 +171,11 @@ class FileItemWidget(BaseListItemWidget):
         menu.addAction(action_move)
 
         action_rename = QAction('Rename', self)
-        action_rename.setDisabled(True)
+        action_rename.triggered.connect(self.open_rename)
         menu.addAction(action_rename)
 
         action_delete = QAction('Delete', self)
-        action_delete.setDisabled(True)
+        action_delete.triggered.connect(self.delete)
         menu.addAction(action_delete)
 
         action_download = QAction('Download', self)
@@ -204,6 +212,64 @@ class FileItemWidget(BaseListItemWidget):
                     body=data
                 )
             )
+
+    def open_rename(self):
+        self.name_widget.setVisible(False)
+        self.name_edit_widget.setVisible(True)
+        self.name_edit_widget.setText(self.name_widget.text())
+        self.name_edit_widget.returnPressed.connect(self.rename)
+        self.name_edit_widget.setFocus()
+
+    def close_rename(self):
+        self.name_widget.setVisible(True)
+        self.name_edit_widget.setVisible(False)
+        self.name_edit_widget.disconnect()
+
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if event.type() == event.FocusOut and obj == self.name_edit_widget:
+            self.close_rename()
+        return super(FileItemWidget, self).eventFilter(obj, event)
+
+    def delete(self):
+        reply = QMessageBox.critical(
+            self,
+            'Delete',
+            f"Do you want to delete '{self.file.name}'? It cannot be undone!",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            data, error = FileRepository.delete(self.file)
+            if data:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        timeout=10000,
+                        title="Delete",
+                        body=data,
+                    )
+                )
+            if error:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        timeout=10000,
+                        title="Delete",
+                        body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    )
+                )
+            Global.communicate.files__refresh.emit()
+
+    def rename(self):
+        if self.name_edit_widget.text():
+            data, error = FileRepository.rename(self.file, self.name_edit_widget.text())
+            if error:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        timeout=10000,
+                        title="Rename",
+                        body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    )
+                )
+            Global.communicate.files__refresh.emit()
 
     def download(self):
         helper = ProgressCallbackHelper()

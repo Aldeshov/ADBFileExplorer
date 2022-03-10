@@ -14,10 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from core.configurations import Settings, Default
+from core.configurations import Settings, Defaults
 from helpers.tools import CommonProcess
 
-ADB_PATH = Settings.adb__custom_path_value if Settings.adb__custom_path_enabled else Default.adb_path
+ADB_PATH = Settings.adb__custom_path_value if Settings.adb__custom_path_enabled else Defaults.adb_path
 
 
 class Parameter:
@@ -45,6 +45,12 @@ class ShellCommand:
     LS_ALL_LIST = [LS, '-a', '-l']
     LS_ALL_LIST_DIRS = [LS, '-a', '-l', '-d']
     LS_VERSION = [LS, '--version']
+
+    CP = 'cp'
+    MV = 'mv'
+    RM = 'rm'
+    RM_DIR = [RM, '-r']
+    RM_DIR_FORCE = [RM, '-r', '-f']
 
     GETPROP = 'getprop'
     GETPROP_PRODUCT_MODEL = [GETPROP, 'ro.product.model']
