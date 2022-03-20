@@ -19,7 +19,7 @@ import os
 import subprocess
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QThread, QObject
+from PyQt5.QtCore import QThread, QObject, QFile, QIODevice, QTextStream
 from PyQt5.QtWidgets import QWidget
 from adb_shell.auth.keygen import keygen
 from adb_shell.auth.sign_pythonrsa import PythonRSASigner
@@ -131,3 +131,12 @@ def get_python_rsa_keys_signer(rerun=True) -> PythonRSASigner:
                 os.mkdir(path)
             keygen(key)
             return get_python_rsa_keys_signer(False)
+
+
+def read_string_from_file(path: str):
+    file = QFile(path)
+    if file.open(QIODevice.ReadOnly | QIODevice.Text):
+        text = QTextStream(file).readAll()
+        file.close()
+        return text
+    return str()

@@ -15,17 +15,17 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtWidgets import QWidget, QLabel, QApplication
 
-from gui.abstract.base import BaseIconWidget
 from core.configurations import Resources, Application
 
 
 class About(QWidget):
     def __init__(self):
         super(QWidget, self).__init__()
-        icon = BaseIconWidget(Resources.icon_logo, width=64, height=64, context=self)
+        icon = QLabel(self)
+        icon.setPixmap(QPixmap(Resources.icon_logo).scaled(64, 64, Qt.KeepAspectRatio))
         icon.move(168, 40)
         about_text = "<br/><br/>"
         about_text += "<b>ADB File Explorer</b><br/>"

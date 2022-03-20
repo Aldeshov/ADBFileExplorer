@@ -22,8 +22,8 @@ from core.main import Adb
 from core.managers import Global
 from data.models import MessageData, MessageType
 from data.repositories import DeviceRepository
-from gui.explorer.main import Explorer
-from gui.others.help import About
+from gui.explorer import MainExplorer
+from gui.help import About
 from gui.others.notification import NotificationCenter
 from helpers.tools import AsyncRepositoryWorker
 
@@ -154,14 +154,12 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
 
         self.setMenuBar(MenuBar(self))
-        self.setCentralWidget(Explorer(self))
+        self.setCentralWidget(MainExplorer(self))
 
-        self.move(300, 300)
         self.resize(640, 480)
-        self.setMinimumWidth(480)
-        self.setMinimumHeight(360)
-        self.setWindowIcon(QIcon(Resources.icon_logo))
+        self.setMinimumSize(480, 360)
         self.setWindowTitle('ADB File Explorer')
+        self.setWindowIcon(QIcon(Resources.icon_logo))
 
         # Show Devices Widget
         Global().communicate.devices.emit()

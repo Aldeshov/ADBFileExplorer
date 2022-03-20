@@ -22,7 +22,6 @@ from core.main import Adb
 from core.managers import Global
 from data.models import MessageData, MessageType
 from data.repositories import FileRepository
-from gui.explorer.files import FileListWidget
 from helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper
 
 
@@ -145,7 +144,7 @@ class ParentButton(QToolButton):
 
     @staticmethod
     def __action__():
-        if Adb.worker().check(FileListWidget.FILES_WORKER_ID) and Adb.manager().up():
+        if Adb.worker().check(300) and Adb.manager().up():
             Global().communicate.files__refresh.emit()
 
 

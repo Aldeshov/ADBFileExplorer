@@ -15,148 +15,330 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import sys
+from typing import List, Any
 
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import Qt, QPoint, QModelIndex, QAbstractListModel, QVariant, QRect, QSize, QEvent, QObject
+from PyQt5.QtGui import QPixmap, QColor, QPalette, QMovie, QKeySequence
+from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QStyle, QWidget, QStyledItemDelegate, \
+    QStyleOptionViewItem, QApplication, QListView, QVBoxLayout, QLabel, QSizePolicy, QHBoxLayout
 
 from core.configurations import Resources
 from core.main import Adb
 from core.managers import Global
 from data.models import File, FileType, MessageData, MessageType
 from data.repositories import FileRepository
-from gui.abstract.base import BaseListItemWidget, BaseListWidget, BaseListHeaderWidget
-from helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper
+from gui.explorer.toolbar import ParentButton, UploadTools, PathBar
+from helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper, read_string_from_file
 
 
-class FileHeaderWidget(BaseListHeaderWidget):
-    def __init__(self):
-        super(FileHeaderWidget, self).__init__()
+class FileHeaderWidget(QWidget):
+    def __init__(self, parent=None):
+        super(FileHeaderWidget, self).__init__(parent)
+        self.setLayout(QHBoxLayout(self))
+        policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
 
-        self.layout.addWidget(
-            BaseListItemWidget.name('File', margin=48)
+        self.file = QLabel('File', self)
+        self.file.setContentsMargins(45, 0, 0, 0)
+        policy.setHorizontalStretch(39)
+        self.file.setSizePolicy(policy)
+        self.layout().addWidget(self.file)
+
+        self.permissions = QLabel('Permissions', self)
+        self.permissions.setAlignment(Qt.AlignCenter)
+        policy.setHorizontalStretch(18)
+        self.permissions.setSizePolicy(policy)
+        self.layout().addWidget(self.permissions)
+
+        self.size = QLabel('Size', self)
+        self.size.setAlignment(Qt.AlignCenter)
+        policy.setHorizontalStretch(21)
+        self.size.setSizePolicy(policy)
+        self.layout().addWidget(self.size)
+
+        self.date = QLabel('Date', self)
+        self.date.setAlignment(Qt.AlignCenter)
+        policy.setHorizontalStretch(22)
+        self.date.setSizePolicy(policy)
+        self.layout().addWidget(self.date)
+
+        self.setStyleSheet("background: #E5E5E5; font-weight: 500;")
+
+
+class FileExplorerToolbar(QWidget):
+    def __init__(self, parent=None):
+        super(FileExplorerToolbar, self).__init__(parent)
+        self.setLayout(QHBoxLayout(self))
+
+        self.upload_tools = UploadTools(self)
+        self.upload_tools.setFixedHeight(32)
+        policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        policy.setHorizontalStretch(1)
+        self.upload_tools.setSizePolicy(policy)
+        self.layout().addWidget(self.upload_tools)
+
+        self.parent_button = ParentButton(self)
+        self.parent_button.setFixedHeight(32)
+        policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        policy.setHorizontalStretch(1)
+        self.parent_button.setSizePolicy(policy)
+        self.layout().addWidget(self.parent_button)
+
+        self.path_bar = PathBar(self)
+        policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        policy.setHorizontalStretch(8)
+        self.path_bar.setSizePolicy(policy)
+        self.layout().addWidget(self.path_bar)
+
+
+class FileItemDelegate(QStyledItemDelegate):
+    def sizeHint(self, option: 'QStyleOptionViewItem', index: QtCore.QModelIndex) -> QtCore.QSize:
+        result = super(FileItemDelegate, self).sizeHint(option, index)
+        result.setHeight(40)
+        return result
+
+    def setEditorData(self, editor: QWidget, index: QtCore.QModelIndex):
+        editor.setText(index.model().data(index, Qt.EditRole))
+
+    def updateEditorGeometry(self, editor: QWidget, option: 'QStyleOptionViewItem', index: QtCore.QModelIndex):
+        editor.setGeometry(
+            option.rect.left() + 50, option.rect.top(), int(option.rect.width() / 2.5) - 54, option.rect.height()
         )
 
-        self.layout.addWidget(
-            self.property('Permissions', alignment=Qt.AlignCenter)
+    def setModelData(self, editor: QWidget, model: QtCore.QAbstractItemModel, index: QtCore.QModelIndex):
+        model.setData(index, editor.text(), Qt.EditRole)
+
+    @staticmethod
+    def paint_line(painter: QtGui.QPainter, color: QColor, x, y, w, h):
+        painter.setPen(color)
+        painter.drawLine(x, y, w, h)
+
+    @staticmethod
+    def paint_text(painter: QtGui.QPainter, text: str, color: QColor, options, x, y, w, h):
+        painter.setPen(color)
+        painter.drawText(QRect(x, y, w, h), options, text)
+
+    def paint(self, painter: QtGui.QPainter, option: 'QStyleOptionViewItem', index: QtCore.QModelIndex):
+        if not index.data():
+            return super(FileItemDelegate, self).paint(painter, option, index)
+
+        self.initStyleOption(option, index)
+        style = option.widget.style() if option.widget else QApplication.style()
+        style.drawControl(QStyle.CE_ItemViewItem, option, painter, option.widget)
+
+        line_color = QColor("#CCCCCC")
+        text_color = option.palette.color(QPalette.Normal, QPalette.Text)
+
+        top = option.rect.top()
+        bottom = option.rect.height()
+
+        first_start = option.rect.left() + 50
+        second_start = option.rect.left() + int(option.rect.width() / 2.5)
+        third_start = option.rect.left() + int(option.rect.width() / 1.75)
+        fourth_start = option.rect.left() + int(option.rect.width() / 1.25)
+        end = option.rect.width() + option.rect.left()
+
+        self.paint_text(
+            painter, index.data().name, text_color, option.displayAlignment,
+            first_start, top, second_start - first_start - 4, bottom
         )
 
-        self.layout.addWidget(
-            self.property('Size', alignment=Qt.AlignCenter)
+        self.paint_line(painter, line_color, second_start - 2, top, second_start - 1, bottom)
+
+        self.paint_text(
+            painter, index.data().permissions, text_color, Qt.AlignCenter | option.displayAlignment,
+            second_start, top, third_start - second_start - 4, bottom
         )
 
-        self.layout.addWidget(
-            self.property('Date', alignment=Qt.AlignCenter, stretch=3)
+        self.paint_line(painter, line_color, third_start - 2, top, third_start - 1, bottom)
+
+        self.paint_text(
+            painter, index.data().size, text_color, Qt.AlignCenter | option.displayAlignment,
+            third_start, top, fourth_start - third_start - 4, bottom
+        )
+
+        self.paint_line(painter, line_color, fourth_start - 2, top, fourth_start - 1, bottom)
+
+        self.paint_text(
+            painter, index.data().date, text_color, Qt.AlignCenter | option.displayAlignment,
+            fourth_start, top, end - fourth_start, bottom
         )
 
 
-class FileListWidget(BaseListWidget):
-    FILES_WORKER_ID = 300
+class FileListModel(QAbstractListModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.items: List[File] = []
 
-    def __init__(self, parent):
-        super(FileListWidget, self).__init__(parent)
+    def clear(self):
+        self.beginResetModel()
+        self.items.clear()
+        self.endResetModel()
 
-    def update(self):
-        super(FileListWidget, self).update()
-        worker = AsyncRepositoryWorker(
-            worker_id=self.FILES_WORKER_ID,
-            name="Files",
-            repository_method=FileRepository.files,
-            response_callback=self.__async_response,
-            arguments=()
-        )
-        if Adb.worker().work(worker):
-            self.loading()
-            worker.start()
+    def populate(self, files: list):
+        self.beginResetModel()
+        self.items.clear()
+        self.items = files
+        self.endResetModel()
 
-    def __async_response(self, files, error):
-        if error:
-            print(error, file=sys.stderr)
-        if error and not files:
-            Global().communicate.notification.emit(
-                MessageData(
-                    title='Files',
-                    timeout=15000,
-                    body=f"<span style='color: red; font-weight: 600'> {error} </span>"
-                )
-            )
+    def rowCount(self, parent: QModelIndex = ...) -> int:
+        return len(self.items)
 
-        widgets = []
-        for file in files:
-            item = FileItemWidget(self, file)
-            widgets.append(item)
-        self.load(widgets, "Folder is empty")
-        Global().communicate.path_toolbar__refresh.emit()
-
-
-class FileItemWidget(BaseListItemWidget):
-    DOWNLOAD_WORKER_ID = 399
-
-    def __init__(self, parent, file: File):
-        super(FileItemWidget, self).__init__(parent)
-        self.file = file
-        self.name_widget = self.name(self.file.name)
-        self.name_edit_widget = self.editable_name(self.file.name)
-        self.name_edit_widget.installEventFilter(self)
-
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self.context_menu)
-
-        self.layout.addWidget(
-            self.icon(self.icon_path)
-        )
-
-        self.layout.addWidget(
-            self.name_widget
-        )
-
-        self.layout.addWidget(
-            self.name_edit_widget
-        )
-
-        self.layout.addWidget(self.separator())
-
-        self.layout.addWidget(
-            self.property(self.file.permissions, font_style="italic", alignment=Qt.AlignCenter)
-        )
-
-        self.layout.addWidget(self.separator())
-
-        self.layout.addWidget(
-            self.property(self.file.size, alignment=Qt.AlignCenter)
-        )
-
-        self.layout.addWidget(self.separator())
-
-        self.layout.addWidget(
-            self.property(self.file.date, alignment=Qt.AlignCenter, stretch=3)
-        )
-
-        self.setToolTip(self.file.name)
-        if self.file.type == FileType.LINK:
-            self.setToolTip(self.file.link)
-
-    @property
-    def icon_path(self):
-        if self.file.type == FileType.DIRECTORY:
+    def icon_path(self, index: QModelIndex = ...):
+        file_type = self.items[index.row()].type
+        if file_type == FileType.DIRECTORY:
             return Resources.icon_folder
-        elif self.file.type == FileType.FILE:
+        elif file_type == FileType.FILE:
             return Resources.icon_file
-        elif self.file.type == FileType.LINK:
-            if self.file.link_type == FileType.DIRECTORY:
+        elif file_type == FileType.LINK:
+            link_type = self.items[index.row()].link_type
+            if link_type == FileType.DIRECTORY:
                 return Resources.icon_link_folder
-            elif self.file.link_type == FileType.FILE:
+            elif link_type == FileType.FILE:
                 return Resources.icon_link_file
             return Resources.icon_link_file_unknown
         return Resources.icon_file_unknown
 
-    def mouseReleaseEvent(self, event):
-        super(FileItemWidget, self).mouseReleaseEvent(event)
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        if not index.isValid():
+            return Qt.NoItemFlags
 
-        if event.button() == Qt.LeftButton:
-            if Adb.manager().open(self.file):
-                Global().communicate.files__refresh.emit()
+        return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+
+    def setData(self, index: QModelIndex, value: Any, role: int = ...) -> bool:
+        if role == Qt.EditRole and value:
+            data, error = FileRepository.rename(self.items[index.row()], value)
+            if error:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        timeout=10000,
+                        title="Rename",
+                        body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    )
+                )
+            Global.communicate.files__refresh.emit()
+        return super(FileListModel, self).setData(index, value, role)
+
+    def data(self, index: QModelIndex, role: int = ...) -> Any:
+        if not index.isValid():
+            return QVariant()
+
+        if role == Qt.DisplayRole:
+            return self.items[index.row()]
+        elif role == Qt.EditRole:
+            return self.items[index.row()].name
+        elif role == Qt.DecorationRole:
+            return QPixmap(self.icon_path(index)).scaled(32, 32, Qt.KeepAspectRatio)
+        return QVariant()
+
+
+class FileExplorerWidget(QWidget):
+    FILES_WORKER_ID = 300
+    DOWNLOAD_WORKER_ID = 399
+
+    def __init__(self, parent=None):
+        super(FileExplorerWidget, self).__init__(parent)
+        self.setLayout(QVBoxLayout(self))
+        self.layout().setSpacing(5)
+
+        self.toolbar = FileExplorerToolbar(self)
+        self.layout().addWidget(self.toolbar)
+
+        self.header = FileHeaderWidget(self)
+        self.layout().addWidget(self.header)
+
+        self.list = QListView(self)
+        self.model = FileListModel(self.list)
+
+        self.list.setSpacing(1)
+        self.list.setModel(self.model)
+        self.list.installEventFilter(self)
+        self.list.doubleClicked.connect(self.open)
+        self.list.setItemDelegate(FileItemDelegate(self.list))
+        self.list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.list.customContextMenuRequested.connect(self.context_menu)
+        self.list.setStyleSheet(read_string_from_file(Resources.style_file_list))
+        self.layout().addWidget(self.list)
+
+        self.loading = QLabel(self)
+        self.loading.setAlignment(Qt.AlignCenter)
+        self.loading_movie = QMovie(Resources.anim_loading, parent=self.loading)
+        self.loading_movie.setScaledSize(QSize(48, 48))
+        self.loading.setMovie(self.loading_movie)
+        self.layout().addWidget(self.loading)
+
+        self.empty_label = QLabel("Folder is empty", self)
+        self.empty_label.setAlignment(Qt.AlignCenter)
+        self.empty_label.setStyleSheet("color: #969696; border: 1px solid #969696")
+        self.layout().addWidget(self.empty_label)
+
+        self.layout().setStretch(self.layout().count() - 1, 1)
+        self.layout().setStretch(self.layout().count() - 2, 1)
+
+        Global().communicate.files__refresh.connect(self.update)
+
+    @property
+    def file(self):
+        if self.list and self.list.currentIndex():
+            return self.model.items[self.list.currentIndex().row()]
+
+    def update(self):
+        super(FileExplorerWidget, self).update()
+        worker = AsyncRepositoryWorker(
+            name="Files",
+            worker_id=self.FILES_WORKER_ID,
+            repository_method=FileRepository.files,
+            response_callback=self._async_response,
+            arguments=()
+        )
+        if Adb.worker().work(worker):
+            # First Setup loading view
+            self.model.clear()
+            self.list.setHidden(True)
+            self.loading.setHidden(False)
+            self.empty_label.setHidden(True)
+            self.loading_movie.start()
+
+            # Then start async worker
+            worker.start()
+            Global().communicate.path_toolbar__refresh.emit()
+
+    def close(self) -> bool:
+        Global().communicate.files__refresh.disconnect()
+        return super(FileExplorerWidget, self).close()
+
+    def _async_response(self, files: list, error: str):
+        self.loading_movie.stop()
+        self.loading.setHidden(True)
+
+        if error:
+            print(error, file=sys.stderr)
+            if not files:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        title='Files',
+                        timeout=15000,
+                        body=f"<span style='color: red; font-weight: 600'> {error} </span>"
+                    )
+                )
+        if not files:
+            self.empty_label.setHidden(False)
+        else:
+            self.list.setHidden(False)
+            self.model.populate(files)
+            self.list.setFocus()
+
+    def eventFilter(self, obj: 'QObject', event: 'QEvent') -> bool:
+        if obj == self.list and \
+                event.type() == QEvent.KeyPress and \
+                event.matches(QKeySequence.InsertParagraphSeparator) and \
+                not self.list.isPersistentEditorOpen(self.list.currentIndex()):
+            self.open(self.list.currentIndex())
+        return super(FileExplorerWidget, self).eventFilter(obj, event)
+
+    def open(self, index: QModelIndex = ...):
+        if Adb.manager().open(self.model.items[index.row()]):
+            Global().communicate.files__refresh.emit()
 
     def context_menu(self, pos: QPoint):
         menu = QMenu()
@@ -171,7 +353,7 @@ class FileItemWidget(BaseListItemWidget):
         menu.addAction(action_move)
 
         action_rename = QAction('Rename', self)
-        action_rename.triggered.connect(self.open_rename)
+        action_rename.triggered.connect(self.rename)
         menu.addAction(action_rename)
 
         action_delete = QAction('Delete', self)
@@ -195,7 +377,7 @@ class FileItemWidget(BaseListItemWidget):
         menu.exec(self.mapToGlobal(pos))
 
     @staticmethod
-    def __async_response(data, error):
+    def default_response(data, error):
         if error:
             Global().communicate.notification.emit(
                 MessageData(
@@ -213,22 +395,8 @@ class FileItemWidget(BaseListItemWidget):
                 )
             )
 
-    def open_rename(self):
-        self.name_widget.setVisible(False)
-        self.name_edit_widget.setVisible(True)
-        self.name_edit_widget.setText(self.name_widget.text())
-        self.name_edit_widget.returnPressed.connect(self.rename)
-        self.name_edit_widget.setFocus()
-
-    def close_rename(self):
-        self.name_widget.setVisible(True)
-        self.name_edit_widget.setVisible(False)
-        self.name_edit_widget.disconnect()
-
-    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
-        if event.type() == event.FocusOut and obj == self.name_edit_widget:
-            self.close_rename()
-        return super(FileItemWidget, self).eventFilter(obj, event)
+    def rename(self):
+        self.list.edit(self.list.currentIndex())
 
     def delete(self):
         reply = QMessageBox.critical(
@@ -258,26 +426,13 @@ class FileItemWidget(BaseListItemWidget):
                 )
             Global.communicate.files__refresh.emit()
 
-    def rename(self):
-        if self.name_edit_widget.text():
-            data, error = FileRepository.rename(self.file, self.name_edit_widget.text())
-            if error:
-                Global().communicate.notification.emit(
-                    MessageData(
-                        timeout=10000,
-                        title="Rename",
-                        body=f"<span style='color: red; font-weight: 600'> {error} </span>",
-                    )
-                )
-            Global.communicate.files__refresh.emit()
-
     def download(self):
         helper = ProgressCallbackHelper()
         worker = AsyncRepositoryWorker(
             worker_id=self.DOWNLOAD_WORKER_ID,
             name="Download",
             repository_method=FileRepository.download,
-            response_callback=FileItemWidget.__async_response,
+            response_callback=self.default_response,
             arguments=(helper.progress_callback.emit, self.file.path)
         )
         if Adb.worker().work(worker):
@@ -299,8 +454,10 @@ class FileItemWidget(BaseListItemWidget):
                 worker_id=self.DOWNLOAD_WORKER_ID,
                 name="Download",
                 repository_method=FileRepository.download_to,
-                response_callback=FileItemWidget.__async_response,
-                arguments=(helper.progress_callback.emit, self.file.path, dir_name)
+                response_callback=self.default_response,
+                arguments=(
+                    helper.progress_callback.emit, self.file.path, dir_name
+                )
             )
             if Adb.worker().work(worker):
                 Global().communicate.notification.emit(
@@ -315,8 +472,8 @@ class FileItemWidget(BaseListItemWidget):
 
     def file_properties(self):
         file, error = FileRepository.file(self.file.path)
-        if file:
-            self.file = file
+        file = file if file else self.file
+
         if error:
             Global().communicate.notification.emit(
                 MessageData(
@@ -326,20 +483,23 @@ class FileItemWidget(BaseListItemWidget):
                 )
             )
 
-        info = f"<br/><u><b>{str(self.file)}</b></u><br/>"
-        info += f"<pre>Name:        {self.file.name or '-'}</pre>"
-        info += f"<pre>Owner:       {self.file.owner or '-'}</pre>"
-        info += f"<pre>Group:       {self.file.group or '-'}</pre>"
-        info += f"<pre>Size:        {self.file.size or '-'}</pre>"
-        info += f"<pre>Permissions: {self.file.permissions or '-'}</pre>"
-        info += f"<pre>Date:        {self.file.date__raw or '-'}</pre>"
-        info += f"<pre>Type:        {self.file.type or '-'}</pre>"
+        info = f"<br/><u><b>{str(file)}</b></u><br/>"
+        info += f"<pre>Name:        {file.name or '-'}</pre>"
+        info += f"<pre>Owner:       {file.owner or '-'}</pre>"
+        info += f"<pre>Group:       {file.group or '-'}</pre>"
+        info += f"<pre>Size:        {file.size or '-'}</pre>"
+        info += f"<pre>Permissions: {file.permissions or '-'}</pre>"
+        info += f"<pre>Date:        {file.date__raw or '-'}</pre>"
+        info += f"<pre>Type:        {file.type or '-'}</pre>"
 
-        if self.file.type == FileType.LINK:
-            info += f"<pre>Links to:    {self.file.link or '-'}</pre>"
+        if file.type == FileType.LINK:
+            info += f"<pre>Links to:    {file.link or '-'}</pre>"
 
         properties = QMessageBox(self)
-        properties.setIconPixmap(QPixmap(self.icon_path).scaled(128, 128, Qt.KeepAspectRatio))
+        properties.setStyleSheet("background-color: #DDDDDD")
+        properties.setIconPixmap(
+            QPixmap(self.model.icon_path(self.list.currentIndex())).scaled(128, 128, Qt.KeepAspectRatio)
+        )
         properties.setWindowTitle('Properties')
         properties.setInformativeText(info)
         properties.exec_()

@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import QApplication
 from core.configurations import Resources
 from core.main import Adb
 from gui.window import MainWindow
+from helpers.tools import read_string_from_file
 
 if __name__ == '__main__':
     adb = Adb()
@@ -30,7 +31,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     window = MainWindow()
-    window.setStyleSheet(Resources.read_string_from_file(Resources.style_window))
+    window.setStyleSheet(read_string_from_file(Resources.style_window))
     window.show()
 
     sys.exit(app.exec_())

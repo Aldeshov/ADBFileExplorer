@@ -18,18 +18,13 @@ import os
 import pathlib
 import platform
 
-from PyQt5.QtCore import QFile, QIODevice, QTextStream
-
 from data.models import Device
 from helpers.tools import Singleton
 
 
 class Application:
-    __version__ = '1.1.0'
+    __version__ = '1.2.0'
     __metaclass__ = Singleton
-
-    def __init__(self):
-        print(Application.NOTICE)
 
     NOTICE = f"""\033[0;32m
         ADB File Explorer v{__version__} Copyright (C) 2022  Azat Aldeshov
@@ -71,6 +66,8 @@ class Resources:
     path = os.path.join(Application.PATH, 'res')
 
     style_window = os.path.join(path, 'styles', 'window.qss')
+    style_file_list = os.path.join(path, 'styles', 'file-list.qss')
+    style_device_list = os.path.join(path, 'styles', 'device-list.qss')
     style_notification_button = os.path.join(path, 'styles', 'notification-button.qss')
 
     icon_logo = os.path.join(path, 'icons', 'logo.svg')
@@ -93,12 +90,3 @@ class Resources:
     icon_folder_create = os.path.join(path, 'icons', 'files', 'actions', 'folder_create.svg')
 
     anim_loading = os.path.join(path, 'anim', 'loading.gif')
-
-    @staticmethod
-    def read_string_from_file(path: str):
-        file = QFile(path)
-        if file.open(QIODevice.ReadOnly | QIODevice.Text):
-            text = QTextStream(file).readAll()
-            file.close()
-            return text
-        return ''

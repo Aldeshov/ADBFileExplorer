@@ -1,0 +1,17 @@
+QListView {
+    outline: 0;
+    background-color: #FAFAFA;
+}
+
+QListView::item{
+    background-color: #E6E6E6;
+}
+
+QListView::item:hover{
+    background-color: #D6D6D6;
+}
+
+QListView::item:active:selected{
+    color: black;
+    background-color: #C1C1C1;
+}

@@ -24,6 +24,7 @@ from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QStyleOpt
 
 from core.configurations import Resources
 from data.models import MessageType
+from helpers.tools import read_string_from_file
 
 
 class BaseMessage(QWidget):
@@ -103,7 +104,7 @@ class BaseMessage(QWidget):
         button.setIcon(QIcon(Resources.icon_close))
         button.setFixedSize(32, 32)
         button.setIconSize(QSize(10, 10))
-        button.setStyleSheet(Resources.read_string_from_file(Resources.style_notification_button))
+        button.setStyleSheet(read_string_from_file(Resources.style_notification_button))
         button.clicked.connect(lambda: self.close() or None)
         self.header.addWidget(button)
 
