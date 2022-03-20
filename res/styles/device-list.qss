@@ -1,6 +1,6 @@
 QListView {
     outline: 0;
-    background-color: #FAFAFA;
+    background-color: #F0F0F0;
 }
 
 QListView::item{
