@@ -48,7 +48,7 @@ class BaseMessage(QWidget):
         self.animation.setEndValue(1)
 
         self.setStyleSheet('QWidget { background: #d3d7cf; }')
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setAttribute(Qt.WA_DeleteOnClose)
         self.setMinimumSize(self.sizeHint())
         self.setMinimumHeight(80)
         self.setFixedWidth(320)

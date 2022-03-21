@@ -62,30 +62,25 @@ class FileHeaderWidget(QWidget):
         self.date.setSizePolicy(policy)
         self.layout().addWidget(self.date)
 
-        self.setStyleSheet("background: #E5E5E5; font-weight: 500;")
+        self.setStyleSheet("QWidget { background-color: #E5E5E5; font-weight: 500; border: 1px solid #C0C0C0 }")
 
 
 class FileExplorerToolbar(QWidget):
     def __init__(self, parent=None):
         super(FileExplorerToolbar, self).__init__(parent)
         self.setLayout(QHBoxLayout(self))
-
-        self.upload_tools = UploadTools(self)
-        self.upload_tools.setFixedHeight(32)
         policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         policy.setHorizontalStretch(1)
+
+        self.upload_tools = UploadTools(self)
         self.upload_tools.setSizePolicy(policy)
         self.layout().addWidget(self.upload_tools)
 
         self.parent_button = ParentButton(self)
-        self.parent_button.setFixedHeight(32)
-        policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
-        policy.setHorizontalStretch(1)
         self.parent_button.setSizePolicy(policy)
         self.layout().addWidget(self.parent_button)
 
         self.path_bar = PathBar(self)
-        policy = QSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         policy.setHorizontalStretch(8)
         self.path_bar.setSizePolicy(policy)
         self.layout().addWidget(self.path_bar)
@@ -102,7 +97,7 @@ class FileItemDelegate(QStyledItemDelegate):
 
     def updateEditorGeometry(self, editor: QWidget, option: 'QStyleOptionViewItem', index: QtCore.QModelIndex):
         editor.setGeometry(
-            option.rect.left() + 50, option.rect.top(), int(option.rect.width() / 2.5) - 54, option.rect.height()
+            option.rect.left() + 48, option.rect.top(), int(option.rect.width() / 2.5) - 55, option.rect.height()
         )
 
     def setModelData(self, editor: QWidget, model: QtCore.QAbstractItemModel, index: QtCore.QModelIndex):
@@ -239,7 +234,6 @@ class FileExplorerWidget(QWidget):
     def __init__(self, parent=None):
         super(FileExplorerWidget, self).__init__(parent)
         self.setLayout(QVBoxLayout(self))
-        self.layout().setSpacing(5)
 
         self.toolbar = FileExplorerToolbar(self)
         self.layout().addWidget(self.toolbar)

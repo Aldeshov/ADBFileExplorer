@@ -25,8 +25,8 @@ from gui.explorer.files import FileExplorerWidget
 class MainExplorer(QWidget):
     def __init__(self, parent=None):
         super(MainExplorer, self).__init__(parent)
-        self.body = QWidget(self)
         self.setLayout(QVBoxLayout(self))
+        self.body = QWidget(self)
 
         Global().communicate.files.connect(self.files)
         Global().communicate.devices.connect(self.devices)

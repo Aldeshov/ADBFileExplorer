@@ -14,7 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from PyQt5.QtGui import QIcon, QFocusEvent
+from PyQt5.QtCore import QObject, QEvent
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QToolButton, QMenu, QWidget, QAction, QFileDialog, QInputDialog, QLineEdit, QHBoxLayout
 
 from core.configurations import Resources
@@ -30,6 +31,7 @@ class UploadTools(QToolButton):
         super(UploadTools, self).__init__(parent)
         self.menu = QMenu(self)
         self.uploader = self.FilesUploader()
+
         self.show_action = QAction(QIcon(Resources.icon_plus), 'Upload', self)
         self.show_action.triggered.connect(self.showMenu)
         self.setDefaultAction(self.show_action)
@@ -137,56 +139,57 @@ class UploadTools(QToolButton):
 class ParentButton(QToolButton):
     def __init__(self, parent):
         super(ParentButton, self).__init__(parent)
-        self.parent_action = QAction(QIcon(Resources.icon_up), 'Parent', self)
-        self.parent_action.triggered.connect(self.__action__)
-        self.parent_action.setShortcut('Escape')
-        self.setDefaultAction(self.parent_action)
-
-    @staticmethod
-    def __action__():
-        if Adb.worker().check(300) and Adb.manager().up():
-            Global().communicate.files__refresh.emit()
+        self.action = QAction(QIcon(Resources.icon_up), 'Parent', self)
+        self.action.setShortcut('Escape')
+        self.action.triggered.connect(
+            lambda: Global().communicate.files__refresh.emit() if Adb.worker().check(300) and Adb.manager().up() else ''
+        )
+        self.setDefaultAction(self.action)
 
 
 class PathBar(QWidget):
-    class LineEdit(QLineEdit):
-        def focusInEvent(self, event: QFocusEvent):
-            super().focusInEvent(event)
-            self.setText(Adb.manager().path())
-
-    def __init__(self, parent: QWidget = 0):
+    def __init__(self, parent: QWidget):
         super(PathBar, self).__init__(parent)
-        self.layout = QHBoxLayout()
-        self.setLayout(self.layout)
+        self.setLayout(QHBoxLayout(self))
 
-        self.path_text = self.LineEdit()
-        self.path_text.setFixedHeight(32)
-        self.path_text.setText(f"{Adb.manager().get_device().name}:/")
-        self.path_text.returnPressed.connect(self.__action__)
-        self.layout.addWidget(self.path_text)
-        self.path_go = QToolButton()
-        self.path_go.setFixedHeight(32)
-        self.path_go.setFixedWidth(32)
+        self.prefix = Adb.manager().get_device().name + ":"
+        self.value = Adb.manager().path()
+
+        self.text = QLineEdit(self)
+        self.text.installEventFilter(self)
+        self.text.setStyleSheet("padding: 5;")
+        self.text.setText(self.prefix + self.value)
+        self.text.textEdited.connect(self._update)
+        self.text.returnPressed.connect(self._action)
+        self.layout().addWidget(self.text)
+
+        self.go = QToolButton(self)
+        self.go.setStyleSheet("padding: 4;")
         self.action = QAction(QIcon(Resources.icon_arrow), 'Go', self)
-        self.action.triggered.connect(self.__action__)
-        self.path_go.setDefaultAction(self.action)
-        self.layout.addWidget(self.path_go)
+        self.action.triggered.connect(self._action)
+        self.go.setDefaultAction(self.action)
+        self.layout().addWidget(self.go)
 
-        self.layout.setSpacing(10)
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout().setContentsMargins(0, 0, 0, 0)
+        Global().communicate.path_toolbar__refresh.connect(self._clear)
 
-        Global().communicate.path_toolbar__refresh.connect(self.__update__)
+    def eventFilter(self, obj: 'QObject', event: 'QEvent') -> bool:
+        if obj == self.text and event.type() == QEvent.FocusIn:
+            self.text.setText(self.value)
+        elif obj == self.text and event.type() == QEvent.FocusOut:
+            self.text.setText(self.prefix + self.value)
+        return super(PathBar, self).eventFilter(obj, event)
 
-    def __update__(self):
-        self.path_text.setText(f"{Adb.manager().get_device().name}:{Adb.manager().path()}")
+    def _clear(self):
+        self.value = Adb.manager().path()
+        self.text.setText(self.prefix + self.value)
 
-    def __action__(self):
-        path = self.path_text.text()
-        self.path_text.clearFocus()
-        if path.startswith(f"{Adb.manager().get_device().name}:"):
-            path = path.replace(f"{Adb.manager().get_device().name}:", '')
+    def _update(self, text: str):
+        self.value = text
 
-        file, error = FileRepository.file(path)
+    def _action(self):
+        self.text.clearFocus()
+        file, error = FileRepository.file(self.value)
         if error:
             Global().communicate.path_toolbar__refresh.emit()
             Global().communicate.notification.emit(
