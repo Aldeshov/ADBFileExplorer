@@ -11,13 +11,13 @@ Features:
 
 ## Screenshots
 
-Devices
+Devices & Notifications
 
-<img src="https://user-images.githubusercontent.com/47108137/155853630-ccb32071-9cf0-4702-9db9-694f6bba1f22.png" width="480" alt="Devices">
+<img src="https://user-images.githubusercontent.com/47108137/159409583-a2106cb3-e39c-4d29-9226-e44daadaec72.png" width="480" alt="Devices & Notifications">
 
-Files & Notifications
+Files
 
-<img src="https://user-images.githubusercontent.com/47108137/155853637-2a6f912e-7f3c-46d5-abeb-732591c1b938.png" width="480" alt="Files & Notifications">
+<img src="https://user-images.githubusercontent.com/47108137/159409633-98662fda-b919-4b3a-ac39-230534a5a839.png" width="480" alt="Files">
 
 ## Requirements
 
