@@ -21,7 +21,6 @@ ADB_PATH = Settings.adb__custom_path_value if Settings.adb__custom_path_enabled 
 
 
 class Parameter:
-    ROOT = 'root'
     DEVICE = '-s'
     PULL = 'pull'
     PUSH = 'push'
@@ -57,6 +56,8 @@ class ShellCommand:
     GETPROP_PRODUCT_MODEL = [GETPROP, 'ro.product.model']
 
     MKDIR = 'mkdir'
+
+    CAT = 'cat'
 
 
 def validate():
@@ -98,11 +99,12 @@ def push(device_id: str, source_path: str, destination_path: str, stdout_callbac
 
 
 def shell(device_id: str, args: list):
-    try:
-        return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.ROOT] + args)
-    except:           
-        return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
+    return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
 
 
 def file_list(device_id: str, path: str):
     return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, ShellCommand.LS, path])
+
+
+def read_file(device_id: str, path: str):
+    return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, ShellCommand.CAT, path])

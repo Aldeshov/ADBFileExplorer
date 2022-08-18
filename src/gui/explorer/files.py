@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from genericpath import isdir
 import sys
 from typing import List, Any
 
@@ -21,7 +22,8 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QPoint, QModelIndex, QAbstractListModel, QVariant, QRect, QSize, QEvent, QObject
 from PyQt5.QtGui import QPixmap, QColor, QPalette, QMovie, QKeySequence
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QStyle, QWidget, QStyledItemDelegate, \
-    QStyleOptionViewItem, QApplication, QListView, QVBoxLayout, QLabel, QSizePolicy, QHBoxLayout
+    QStyleOptionViewItem, QApplication, QListView, QVBoxLayout, QLabel, QSizePolicy, QHBoxLayout, QTextEdit, \
+    QMainWindow
 
 from core.configurations import Resources
 from core.main import Adb
@@ -269,6 +271,8 @@ class FileExplorerWidget(QWidget):
         self.layout().setStretch(self.layout().count() - 1, 1)
         self.layout().setStretch(self.layout().count() - 2, 1)
 
+        self.text_view_window = None
+
         Global().communicate.files__refresh.connect(self.update)
 
     @property
@@ -350,6 +354,10 @@ class FileExplorerWidget(QWidget):
         action_rename.triggered.connect(self.rename)
         menu.addAction(action_rename)
 
+        action_open_file = QAction('Open', self)
+        action_open_file.triggered.connect(self.open_file)
+        menu.addAction(action_open_file)
+
         action_delete = QAction('Delete', self)
         action_delete.triggered.connect(self.delete)
         menu.addAction(action_delete)
@@ -391,6 +399,21 @@ class FileExplorerWidget(QWidget):
 
     def rename(self):
         self.list.edit(self.list.currentIndex())
+
+    def open_file(self):
+        if not self.file.isdir:
+            error, data = FileRepository.open_file(self.file)
+            if error:
+                Global().communicate.notification.emit(
+                    MessageData(
+                        title='File',
+                        timeout=15000,
+                        body=f"<span style='color: red; font-weight: 600'> {data} </span>"
+                    )
+                )
+            else:
+                self.text_view_window = TextView(self.file.name, data)
+                self.text_view_window.show()
 
     def delete(self):
         reply = QMessageBox.critical(
@@ -497,3 +520,17 @@ class FileExplorerWidget(QWidget):
         properties.setWindowTitle('Properties')
         properties.setInformativeText(info)
         properties.exec_()
+
+
+class TextView(QMainWindow):
+    def __init__(self, filename, data):
+        QMainWindow.__init__(self)
+
+        self.setMinimumSize(QSize(500, 300))    
+        self.setWindowTitle(filename) 
+
+        self.text_edit = QTextEdit(self)
+        self.setCentralWidget(self.text_edit)
+        self.text_edit.insertPlainText(data)
+        # self.text_edit.setDisabled(True)
+        self.text_edit.move(10,10)

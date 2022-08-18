@@ -82,6 +82,16 @@ class FileRepository:
         return None, response.ErrorData or response.OutputData
 
     @classmethod
+    def open_file(cls, file: File) -> (str, str):
+        args = [adb.ShellCommand.CAT, file.path.replace(' ', r'\ ')]
+        if file.isdir:
+            return None, f"Can't open. {file.path} is a directory"
+        response = adb.shell(AndroidADBManager.get_device().id, args)
+        if not response.IsSuccessful:
+            return True, response.ErrorData or response.OutputData
+        return None, response.ErrorData or response.OutputData
+
+    @classmethod
     def delete(cls, file: File) -> (str, str):
         args = [adb.ShellCommand.RM, file.path.replace(' ', r'\ ')]
         if file.isdir:

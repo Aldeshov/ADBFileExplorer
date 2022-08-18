@@ -124,6 +124,26 @@ class FileRepository:
             return None, error
 
     @classmethod
+    def open_file(cls, file: File) -> (str, str):
+        if not PythonADBManager.device:
+            return None, "No device selected!"
+        if not PythonADBManager.device.available:
+            return None, "Device not available!"
+        try:
+            args = [ShellCommand.CAT, file.path.replace(' ', r'\ ')]
+            if file.isdir:
+                file(cls, file.path)
+                return None, f"Can't open. {file.path} is a directory"
+            response = PythonADBManager.device.shell(shlex.join(args))
+            if not response.IsSuccessful:
+                return True, response.ErrorData or response.OutputData
+            return None, response.ErrorData or response.OutputData
+        except BaseException as error:
+            logging.error(f"Unexpected {error=}, {type(error)=}")
+            return None, error
+
+
+    @classmethod
     def delete(cls, file: File) -> (str, str):
         if not PythonADBManager.device:
             return None, "No device selected!"
