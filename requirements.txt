@@ -1,3 +1,0 @@
-PyQt5
-libusb1
-adb-shell
