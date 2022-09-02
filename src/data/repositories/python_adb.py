@@ -26,6 +26,7 @@ from core.configurations import Defaults
 from core.managers import PythonADBManager
 from data.models import Device, File, FileType
 from helpers.converters import __converter_to_permissions_default__
+from helpers.tools import quote_file_name
 from services.adb import ShellCommand
 
 
@@ -47,7 +48,7 @@ class FileRepository:
             )
 
             if file.type == FileType.LINK:
-                args = ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ') + '/']
+                args = ShellCommand.LS_LIST_DIRS + [quote_file_name(path + '/')]
                 response = PythonADBManager.device.shell(shlex.join(args))
                 file.link_type = FileType.UNKNOWN
                 if response and response.startswith('d'):
@@ -73,7 +74,7 @@ class FileRepository:
             path = PythonADBManager.path()
             response = PythonADBManager.device.list(path)
 
-            args = ShellCommand.LS_ALL_DIRS + [path.replace(' ', r'\ ') + "*/"]
+            args = ShellCommand.LS_ALL_DIRS + [quote_file_name(path) + "*/"]
             dirs = PythonADBManager.device.shell(" ".join(args)).split()
 
             for file in response:
@@ -114,7 +115,7 @@ class FileRepository:
             return None, "Invalid name"
 
         try:
-            args = [ShellCommand.MV, file.path, file.location + name]
+            args = [ShellCommand.MV, quote_file_name(file.path), quote_file_name(file.location + name)]
             response = PythonADBManager.device.shell(shlex.join(args))
             if response:
                 return None, response
@@ -130,9 +131,9 @@ class FileRepository:
         if not PythonADBManager.device.available:
             return None, "Device not available!"
         try:
-            args = [ShellCommand.RM, file.path]
+            args = [ShellCommand.RM, quote_file_name(file.path)]
             if file.isdir:
-                args = ShellCommand.RM_DIR_FORCE + [file.path]
+                args = ShellCommand.RM_DIR_FORCE + [ quote_file_name(file.path)]
             response = PythonADBManager.device.shell(shlex.join(args))
             if response:
                 return None, response
@@ -140,11 +141,6 @@ class FileRepository:
         except BaseException as error:
             logging.error(f"Unexpected {error=}, {type(error)=}")
             return None, error
-
-    @classmethod
-    def download(cls, progress_callback: callable, source: str) -> (str, str):
-        destination = Defaults.device_downloads_path(PythonADBManager.get_device())
-        return cls.download_to(progress_callback, source, destination)
 
     class UpDownHelper:
         def __init__(self, callback: callable):
@@ -161,7 +157,9 @@ class FileRepository:
             self.callback(path, int(self.written / self.total * 100))
 
     @classmethod
-    def download_to(cls, progress_callback: callable, source: str, destination: str) -> (str, str):
+    def download_to(cls, progress_callback: callable, source: str, destination: str=None) -> (str, str):
+        if destination is None:
+            destination = Defaults.device_downloads_path(PythonADBManager.get_device())
         helper = cls.UpDownHelper(progress_callback)
         destination = os.path.join(destination, os.path.basename(os.path.normpath(source)))
         if PythonADBManager.device and PythonADBManager.device.available and source:
