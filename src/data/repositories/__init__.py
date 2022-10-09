@@ -58,13 +58,6 @@ class FileRepository:
             return android_adb.FileRepository.delete(file)
 
     @classmethod
-    def download(cls, progress_callback: callable, source: str) -> (str, str):
-        if Adb.CORE == Adb.PYTHON_ADB_SHELL:
-            return python_adb.FileRepository.download(progress_callback=progress_callback, source=source)
-        elif Adb.CORE == Adb.EXTERNAL_TOOL_ADB:
-            return android_adb.FileRepository.download(progress_callback=progress_callback, source=source)
-
-    @classmethod
     def download_to(cls, progress_callback: callable, source: str, destination: str) -> (str, str):
         if Adb.CORE == Adb.PYTHON_ADB_SHELL:
             return python_adb.FileRepository.download_to(

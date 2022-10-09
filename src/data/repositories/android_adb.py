@@ -20,6 +20,7 @@ from core.configurations import Defaults
 from core.managers import AndroidADBManager
 from data.models import FileType, Device, File
 from helpers.converters import convert_to_devices, convert_to_file, convert_to_file_list_a
+from helpers.tools import quote_file_name
 from services import adb
 
 
@@ -30,7 +31,7 @@ class FileRepository:
             return None, "No device selected!"
 
         path = AndroidADBManager.clear_path(path)
-        args = adb.ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ')]
+        args = adb.ShellCommand.LS_LIST_DIRS + [quote_file_name(path)]
         response = adb.shell(AndroidADBManager.get_device().id, args)
         if not response.IsSuccessful:
             return None, response.ErrorData or response.OutputData
@@ -40,7 +41,7 @@ class FileRepository:
             return None, f"Unexpected string:\n{response.OutputData}"
 
         if file.type == FileType.LINK:
-            args = adb.ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ') + '/']
+            args = adb.ShellCommand.LS_LIST_DIRS + [quote_file_name(path + '/')]
             response = adb.shell(AndroidADBManager.get_device().id, args)
             file.link_type = FileType.UNKNOWN
             if response.OutputData and response.OutputData.startswith('d'):
@@ -56,7 +57,7 @@ class FileRepository:
             return None, "No device selected!"
 
         path = AndroidADBManager.path()
-        args = adb.ShellCommand.LS_ALL_LIST + [path.replace(' ', r'\ ')]
+        args = adb.ShellCommand.LS_ALL_LIST + [quote_file_name(path)]
         response = adb.shell(AndroidADBManager.get_device().id, args)
         if not response.IsSuccessful and response.ExitCode != 1:
             return [], response.ErrorData or response.OutputData
@@ -64,7 +65,7 @@ class FileRepository:
         if not response.OutputData:
             return [], response.ErrorData
 
-        args = adb.ShellCommand.LS_ALL_DIRS + [path.replace(' ', r'\ ') + "*/"]
+        args = adb.ShellCommand.LS_ALL_DIRS + [quote_file_name(path) + "*/"]
         response_dirs = adb.shell(AndroidADBManager.get_device().id, args)
         if not response_dirs.IsSuccessful and response_dirs.ExitCode != 1:
             return [], response_dirs.ErrorData or response_dirs.OutputData
@@ -77,7 +78,7 @@ class FileRepository:
     def rename(cls, file: File, name) -> (str, str):
         if name.__contains__('/') or name.__contains__('\\'):
             return None, "Invalid name"
-        args = [adb.ShellCommand.MV, file.path.replace(' ', r'\ '), (file.location + name).replace(' ', r'\ ')]
+        args = [adb.ShellCommand.MV, quote_file_name(file.path), quote_file_name(file.location + name)]
         response = adb.shell(AndroidADBManager.get_device().id, args)
         return None, response.ErrorData or response.OutputData
 
@@ -93,18 +94,13 @@ class FileRepository:
 
     @classmethod
     def delete(cls, file: File) -> (str, str):
-        args = [adb.ShellCommand.RM, file.path.replace(' ', r'\ ')]
+        args = [adb.ShellCommand.RM, quote_file_name(file.path)]
         if file.isdir:
-            args = adb.ShellCommand.RM_DIR_FORCE + [file.path.replace(' ', r'\ ')]
+            args = adb.ShellCommand.RM_DIR_FORCE + [quote_file_name(file.path)]
         response = adb.shell(AndroidADBManager.get_device().id, args)
         if not response.IsSuccessful or response.OutputData:
             return None, response.ErrorData or response.OutputData
         return f"{'Folder' if file.isdir else 'File'} '{file.path}' has been deleted", None
-
-    @classmethod
-    def download(cls, progress_callback: callable, source: str) -> (str, str):
-        destination = Defaults.device_downloads_path(AndroidADBManager.get_device())
-        return cls.download_to(progress_callback, source, destination)
 
     class UpDownHelper:
         def __init__(self, callback: callable):
@@ -120,7 +116,9 @@ class FileRepository:
                 self.messages.append(data)
 
     @classmethod
-    def download_to(cls, progress_callback: callable, source: str, destination: str) -> (str, str):
+    def download_to(cls, progress_callback: callable, source: str, destination: str=None) -> (str, str):
+        if destination is None:
+            destination = Defaults.device_downloads_path(AndroidADBManager.get_device())
         if AndroidADBManager.get_device() and source and destination:
             helper = cls.UpDownHelper(progress_callback)
             response = adb.pull(AndroidADBManager.get_device().id, source, destination, helper.call)
