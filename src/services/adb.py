@@ -22,7 +22,7 @@ ADB_PATH = Settings.adb__custom_path_value if Settings.adb__custom_path_enabled 
 
 class Parameter:
     DEVICE = '-s'
-    PULL = 'pull'
+    PULL = 'pull -a'
     PUSH = 'push'
     SHELL = 'shell'
     CONNECT = 'connect'
