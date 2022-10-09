@@ -1,30 +1,16 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+# ADB File Explorer
+# Copyright (C) 2022  Azat Aldeshov
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QInputDialog, QMenuBar, QMessageBox
 
-from app.core.configurations import Resources
+from app.core.configurations import Resources, Settings
 from app.core.main import Adb
 from app.core.managers import Global
 from app.data.models import MessageData, MessageType
 from app.data.repositories import DeviceRepository
 from app.gui.explorer import MainExplorer
 from app.gui.help import About
-from app.gui.others.notification import NotificationCenter
+from app.gui.notification import NotificationCenter
 from app.helpers.tools import AsyncRepositoryWorker
 
 
@@ -39,10 +25,10 @@ class MenuBar(QMenuBar):
         self.file_menu = self.addMenu('&File')
         self.help_menu = self.addMenu('&Help')
 
-        connect_action = QAction(QIcon(Resources.icon_link), '&Connect', self)
-        connect_action.setShortcut('Alt+C')
-        connect_action.triggered.connect(self.connect_device)
-        self.file_menu.addAction(connect_action)
+        self.connect_action = QAction(QIcon(Resources.icon_link), '&Connect', self)
+        self.connect_action.setShortcut('Alt+C')
+        self.connect_action.triggered.connect(self.connect_device)
+        self.file_menu.addAction(self.connect_action)
 
         disconnect_action = QAction(QIcon(Resources.icon_no_link), '&Disconnect', self)
         disconnect_action.setShortcut('Alt+X')
@@ -80,7 +66,7 @@ class MenuBar(QMenuBar):
                     message_catcher=worker.set_loading_widget
                 )
             )
-            Global().communicate.status_bar.emit(f'Operation: {worker.name}... Please wait.', 3000)
+            Global().communicate.status_bar.emit('Operation: %s... Please wait.', 3000) % worker.name
             worker.start()
 
     def connect_device(self):
@@ -104,7 +90,7 @@ class MenuBar(QMenuBar):
                         message_catcher=worker.set_loading_widget
                     )
                 )
-                Global().communicate.status_bar.emit(f'Operation: {worker.name}... Please wait.', 3000)
+                Global().communicate.status_bar.emit('Operation: %s... Please wait.', 3000) % worker.name
                 worker.start()
 
     @staticmethod
@@ -124,7 +110,7 @@ class MenuBar(QMenuBar):
                 MessageData(
                     timeout=15000,
                     title="Disconnect",
-                    body=f"<span style='color: red; font-weight: 600'>{error}</span>"
+                    body="<span style='color: red; font-weight: 600'></span>" % error
                 )
             )
         Global().communicate.status_bar.emit('Operation: Disconnecting finished.', 3000)
@@ -132,9 +118,9 @@ class MenuBar(QMenuBar):
     @staticmethod
     def __async_response_connect(data, error):
         if data:
-            if Adb.CORE == Adb.PYTHON_ADB_SHELL:
+            if Adb.core == Adb.PYTHON_ADB_SHELL:
                 Global().communicate.files.emit()
-            elif Adb.CORE == Adb.EXTERNAL_TOOL_ADB:
+            elif Adb.core == Adb.EXTERNAL_TOOL_ADB:
                 Global().communicate.devices.emit()
             Global().communicate.notification.emit(MessageData(title="Connecting to device", timeout=15000, body=data))
         if error:
@@ -143,7 +129,7 @@ class MenuBar(QMenuBar):
                 MessageData(
                     timeout=15000,
                     title="Connect to device",
-                    body=f"<span style='color: red; font-weight: 600'>{error}</span>"
+                    body="<span style='color: red; font-weight: 600'>%s</span>" % error
                 )
             )
         Global().communicate.status_bar.emit('Operation: Connecting to device finished.', 3000)
@@ -174,8 +160,8 @@ class MainWindow(QMainWindow):
         # Welcome notification texts
         welcome_title = "Welcome to ADBFileExplorer!"
         welcome_body = "Here you can see the list of your connected adb devices. Click one of them to see files.<br/>"\
-                       "Current selected core: <strong>%s</strong><br/>To change it " \
-                       "<code style='color: blue'>adb.set_core()</code> in <code>__main__.py</code>" % Adb.current_core()
+                       "Current selected core: <strong>%s</strong><br/>" \
+                       "To change it - <code style='color: blue'>settings.json</code> file" % Settings.adb_core()
 
         Global().communicate.status_bar.emit('Ready', 5000)
         Global().communicate.notification.emit(MessageData(title=welcome_title, body=welcome_body, timeout=30000))
@@ -191,13 +177,16 @@ class MainWindow(QMainWindow):
             data.message_catcher(message)
 
     def closeEvent(self, event):
-        if Adb.CORE == Adb.EXTERNAL_TOOL_ADB:
-            reply = QMessageBox.question(self, 'ADB Server', "Do you want to kill adb server?",
-                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if Adb.core == Adb.EXTERNAL_TOOL_ADB:
+            if Settings.adb_kill_server_at_exit() is None:
+                reply = QMessageBox.question(self, 'ADB Server', "Do you want to kill adb server?",
+                                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
 
-            if reply == QMessageBox.Yes:
+                if reply == QMessageBox.Yes:
+                    Adb.stop()
+            elif Settings.adb_kill_server_at_exit():
                 Adb.stop()
-        elif Adb.CORE == Adb.PYTHON_ADB_SHELL:
+        elif Adb.core == Adb.PYTHON_ADB_SHELL:
             Adb.stop()
 
         event.accept()

@@ -1,29 +1,17 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+# ADB File Explorer
+# Copyright (C) 2022  Azat Aldeshov
 from app.core.configurations import Settings
 from app.helpers.tools import CommonProcess
 
-ADB_PATH = Settings.adb_path
+ADB_PATH = Settings.adb_path()
+RUN_AS_ROOT = Settings.adb_run_as_root()
+PRESERVE_TIMESTAMP = Settings.preserve_timestamp()
 
 
 class Parameter:
     ROOT = 'root'
     DEVICE = '-s'
-    PULL = 'pull -a'
+    PULL = 'pull'
     PUSH = 'push'
     SHELL = 'shell'
     CONNECT = 'connect'
@@ -31,6 +19,7 @@ class Parameter:
     VERSION = '--version'
     DEVICES = 'devices'
     DEVICES_LONG = '-l'
+    PRESERVE_TIMESTAMP = '-a'
     DISCONNECT = 'disconnect'
     START_SERVER = 'start-server'
     KILL_SERVER = 'kill-server'
@@ -90,7 +79,8 @@ def disconnect():
 
 
 def pull(device_id: str, source_path: str, destination_path: str, stdout_callback: callable):
-    args = [ADB_PATH, Parameter.DEVICE, device_id, Parameter.PULL, source_path, destination_path]
+    pull_options = [Parameter.PULL, Parameter.PRESERVE_TIMESTAMP] if PRESERVE_TIMESTAMP else [Parameter.PULL]
+    args = [ADB_PATH, Parameter.DEVICE, device_id, *pull_options, source_path, destination_path]
     return CommonProcess(arguments=args, stdout_callback=stdout_callback)
 
 
@@ -100,10 +90,9 @@ def push(device_id: str, source_path: str, destination_path: str, stdout_callbac
 
 
 def shell(device_id: str, args: list):
-    try:
+    if RUN_AS_ROOT:
         return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.ROOT] + args)
-    except:           
-        return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
+    return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
 
 
 def file_list(device_id: str, path: str):

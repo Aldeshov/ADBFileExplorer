@@ -1,5 +1,5 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
+# ADB File Explorer (python)
+# Copyright (C) 2022  Azat Aldeshov
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,8 +31,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QGridLayout
 
 from data.models import MessageType
-from gui.others.additional import LoadingWidget
-from gui.others.notification import NotificationCenter
+from app.gui.notification import NotificationCenter
 
 
 class NotifyExample(QWidget):
@@ -44,10 +43,6 @@ class NotifyExample(QWidget):
         button_notify = QPushButton('Notify', self)
         button_notify.clicked.connect(self.notify)
         self.layout().addWidget(button_notify)
-
-        button_loading = QPushButton('Loading', self)
-        button_loading.clicked.connect(self.old_loading)
-        self.layout().addWidget(button_loading)
 
         self.setMinimumSize(640, 480)
         self.notification_center = NotificationCenter(self)
@@ -66,13 +61,10 @@ class NotifyExample(QWidget):
         elif self.counter % 2 == 1:
             self.notification_center.append_notification(
                 title="Message",
-                body=f"<span style='color: red; font-weight: 600'>Lorem ipsum dolor sit amet</span>",
+                body="<span style='color: red; font-weight: 600'>Lorem ipsum dolor sit amet</span>",
                 message_type=MessageType.LOADING_MESSAGE
             )
         self.counter = self.counter + 1
-
-    def old_loading(self):
-        LoadingWidget(self, "Loading, please wait... (ALT+F4 to stop)")
 
     def resizeEvent(self, e):
         if self.notification_center:

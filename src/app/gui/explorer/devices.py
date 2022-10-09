@@ -1,20 +1,6 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-from typing import List, Any
+# ADB File Explorer
+# Copyright (C) 2022  Azat Aldeshov
+from typing import Any
 
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import Qt, QAbstractListModel, QModelIndex, QRect, QVariant, QSize
@@ -25,7 +11,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QStyledItemDelegate, Q
 from app.core.configurations import Resources
 from app.core.main import Adb
 from app.core.managers import Global
-from app.data.models import Device, DeviceType, MessageData
+from app.data.models import DeviceType, MessageData
 from app.data.repositories import DeviceRepository
 from app.helpers.tools import AsyncRepositoryWorker, read_string_from_file
 
@@ -65,7 +51,7 @@ class DeviceItemDelegate(QStyledItemDelegate):
 class DeviceListModel(QAbstractListModel):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.items: List[Device] = []
+        self.items = []
 
     def clear(self):
         self.beginResetModel()
@@ -101,11 +87,11 @@ class DeviceExplorerWidget(QWidget):
 
     def __init__(self, parent=None):
         super(DeviceExplorerWidget, self).__init__(parent)
-        self.setLayout(QVBoxLayout(self))
+        self.main_layout = QVBoxLayout(self)
 
         self.header = QLabel('Connected devices', self)
         self.header.setAlignment(Qt.AlignCenter)
-        self.layout().addWidget(self.header)
+        self.main_layout.addWidget(self.header)
 
         self.list = QListView(self)
         self.model = DeviceListModel(self.list)
@@ -115,23 +101,24 @@ class DeviceExplorerWidget(QWidget):
         self.list.clicked.connect(self.open)
         self.list.setItemDelegate(DeviceItemDelegate(self.list))
         self.list.setStyleSheet(read_string_from_file(Resources.style_device_list))
-        self.layout().addWidget(self.list)
+        self.main_layout.addWidget(self.list)
 
         self.loading = QLabel(self)
         self.loading.setAlignment(Qt.AlignCenter)
         self.loading_movie = QMovie(Resources.anim_loading, parent=self.loading)
         self.loading_movie.setScaledSize(QSize(48, 48))
         self.loading.setMovie(self.loading_movie)
-        self.layout().addWidget(self.loading)
+        self.main_layout.addWidget(self.loading)
 
         self.empty_label = QLabel("No connected devices", self)
         self.empty_label.setAlignment(Qt.AlignTop)
         self.empty_label.setContentsMargins(15, 10, 0, 0)
         self.empty_label.setStyleSheet("color: #969696; border: 1px solid #969696")
-        self.layout().addWidget(self.empty_label)
+        self.main_layout.addWidget(self.empty_label)
 
-        self.layout().setStretch(self.layout().count() - 1, 1)
-        self.layout().setStretch(self.layout().count() - 2, 1)
+        self.main_layout.setStretch(self.layout().count() - 1, 1)
+        self.main_layout.setStretch(self.layout().count() - 2, 1)
+        self.setLayout(self.main_layout)
 
     def update(self):
         super(DeviceExplorerWidget, self).update()
@@ -167,7 +154,7 @@ class DeviceExplorerWidget(QWidget):
                 MessageData(
                     title='Devices',
                     timeout=15000,
-                    body=f"<span style='color: red; font-weight: 600'> {error} </span>"
+                    body="<span style='color: red; font-weight: 600'> %s </span>" % error
                 )
             )
         if not devices:
@@ -185,6 +172,6 @@ class DeviceExplorerWidget(QWidget):
                     MessageData(
                         title='Device',
                         timeout=10000,
-                        body=f"Could not open the device {Adb.manager().get_device().name}"
+                        body="Could not open the device %s" % Adb.manager().get_device().name
                     )
                 )

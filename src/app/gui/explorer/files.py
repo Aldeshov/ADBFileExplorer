@@ -1,25 +1,11 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+# ADB File Explorer
+# Copyright (C) 2022  Azat Aldeshov
 import sys
-from typing import List, Any
+from typing import Any
 
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, QPoint, QModelIndex, QAbstractListModel, QVariant, QRect, QSize, QEvent, QObject, QUrl
-from PyQt5.QtGui import QPixmap, QColor, QPalette, QMovie, QKeySequence, QDesktopServices
+from PyQt5.QtCore import Qt, QPoint, QModelIndex, QAbstractListModel, QVariant, QRect, QSize, QEvent, QObject
+from PyQt5.QtGui import QPixmap, QColor, QPalette, QMovie, QKeySequence
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QStyle, QWidget, QStyledItemDelegate, \
     QStyleOptionViewItem, QApplication, QListView, QVBoxLayout, QLabel, QSizePolicy, QHBoxLayout, QTextEdit, \
     QMainWindow
@@ -27,7 +13,7 @@ from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QStyle, QW
 from app.core.configurations import Resources
 from app.core.main import Adb
 from app.core.managers import Global
-from app.data.models import File, FileType, MessageData, MessageType
+from app.data.models import FileType, MessageData, MessageType
 from app.data.repositories import FileRepository
 from app.gui.explorer.toolbar import ParentButton, UploadTools, PathBar
 from app.helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper, read_string_from_file
@@ -164,7 +150,7 @@ class FileItemDelegate(QStyledItemDelegate):
 class FileListModel(QAbstractListModel):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.items: List[File] = []
+        self.items = []
 
     def clear(self):
         self.beginResetModel()
@@ -209,7 +195,7 @@ class FileListModel(QAbstractListModel):
                     MessageData(
                         timeout=10000,
                         title="Rename",
-                        body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                        body="<span style='color: red; font-weight: 600'> %s </span>" % error,
                     )
                 )
             Global.communicate.files__refresh.emit()
@@ -235,13 +221,12 @@ class FileExplorerWidget(QWidget):
     def __init__(self, parent=None):
         super(FileExplorerWidget, self).__init__(parent)
         self.main_layout = QVBoxLayout(self)
-        self.setLayout(self.main_layout)
 
         self.toolbar = FileExplorerToolbar(self)
-        self.layout().addWidget(self.toolbar)
+        self.main_layout.addWidget(self.toolbar)
 
         self.header = FileHeaderWidget(self)
-        self.layout().addWidget(self.header)
+        self.main_layout.addWidget(self.header)
 
         self.list = QListView(self)
         self.model = FileListModel(self.list)
@@ -262,19 +247,25 @@ class FileExplorerWidget(QWidget):
         self.loading_movie = QMovie(Resources.anim_loading, parent=self.loading)
         self.loading_movie.setScaledSize(QSize(48, 48))
         self.loading.setMovie(self.loading_movie)
-        self.layout().addWidget(self.loading)
+        self.main_layout.addWidget(self.loading)
 
         self.empty_label = QLabel("Folder is empty", self)
         self.empty_label.setAlignment(Qt.AlignCenter)
         self.empty_label.setStyleSheet("color: #969696; border: 1px solid #969696")
         self.layout().addWidget(self.empty_label)
 
-        self.layout().setStretch(self.layout().count() - 1, 1)
-        self.layout().setStretch(self.layout().count() - 2, 1)
+        self.main_layout.setStretch(self.layout().count() - 1, 1)
+        self.main_layout.setStretch(self.layout().count() - 2, 1)
 
         self.text_view_window = None
+        self.setLayout(self.main_layout)
 
         Global().communicate.files__refresh.connect(self.update)
+
+    @property
+    def file(self):
+        if self.list and self.list.currentIndex():
+            return self.model.items[self.list.currentIndex().row()]
 
     @property
     def files(self):
@@ -317,7 +308,7 @@ class FileExplorerWidget(QWidget):
                     MessageData(
                         title='Files',
                         timeout=15000,
-                        body=f"<span style='color: red; font-weight: 600'> {error} </span>"
+                        body="<span style='color: red; font-weight: 600'> %s </span>" % error
                     )
                 )
         if not files:
@@ -364,7 +355,7 @@ class FileExplorerWidget(QWidget):
         menu.addAction(action_delete)
 
         action_download = QAction('Download', self)
-        action_download.triggered.connect(self.download)
+        action_download.triggered.connect(self.download_files)
         menu.addAction(action_download)
 
         action_download_to = QAction('Download to...', self)
@@ -386,7 +377,7 @@ class FileExplorerWidget(QWidget):
                 MessageData(
                     title='Download error',
                     timeout=15000,
-                    body=f"<span style='color: red; font-weight: 600'> {error} </span>"
+                    body="<span style='color: red; font-weight: 600'> %s </span>" % error
                 )
             )
         if data:
@@ -402,14 +393,15 @@ class FileExplorerWidget(QWidget):
         self.list.edit(self.list.currentIndex())
 
     def open_file(self):
+        # QDesktopServices.openUrl(QUrl.fromLocalFile("downloaded_path")) open via external app
         if not self.file.isdir:
-            error, data = FileRepository.open_file(self.file)
+            data, error = FileRepository.open_file(self.file)
             if error:
                 Global().communicate.notification.emit(
                     MessageData(
                         title='File',
                         timeout=15000,
-                        body=f"<span style='color: red; font-weight: 600'> {data} </span>"
+                        body="<span style='color: red; font-weight: 600'> %s </span>" % error
                     )
                 )
             else:
@@ -417,11 +409,11 @@ class FileExplorerWidget(QWidget):
                 self.text_view_window.show()
 
     def delete(self):
-        fileNames = ', '.join(map(lambda f: f.name, self.files))
+        file_names = ', '.join(map(lambda f: f.name, self.files))
         reply = QMessageBox.critical(
             self,
             'Delete',
-            f"Do you want to delete '{fileNames}'? It cannot be undone!",
+            "Do you want to delete '%s'? It cannot be undone!" % file_names,
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
 
@@ -441,26 +433,23 @@ class FileExplorerWidget(QWidget):
                         MessageData(
                             timeout=10000,
                             title="Delete",
-                            body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                            body="<span style='color: red; font-weight: 600'> %s </span>" % error,
                         )
                     )
             Global.communicate.files__refresh.emit()
-
-    def download(self):
-        self.download_files()
 
     def download_to(self):
         dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
         if dir_name:
             self.download_files(dir_name)
 
-    def download_files(self, destination: str=None):
+    def download_files(self, destination: str = None):
         for file in self.files:
             helper = ProgressCallbackHelper()
             worker = AsyncRepositoryWorker(
                 worker_id=self.DOWNLOAD_WORKER_ID,
                 name="Download",
-                repository_method=FileRepository.download_to,
+                repository_method=FileRepository.download,
                 response_callback=self.default_response,
                 arguments=(
                     helper.progress_callback.emit, file.path, destination
@@ -486,21 +475,21 @@ class FileExplorerWidget(QWidget):
                 MessageData(
                     timeout=10000,
                     title="Opening folder",
-                    body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                    body="<span style='color: red; font-weight: 600'> %s </span>" % error,
                 )
             )
 
-        info = f"<br/><u><b>{str(file)}</b></u><br/>"
-        info += f"<pre>Name:        {file.name or '-'}</pre>"
-        info += f"<pre>Owner:       {file.owner or '-'}</pre>"
-        info += f"<pre>Group:       {file.group or '-'}</pre>"
-        info += f"<pre>Size:        {file.raw_size or '-'}</pre>"
-        info += f"<pre>Permissions: {file.permissions or '-'}</pre>"
-        info += f"<pre>Date:        {file.raw_date or '-'}</pre>"
-        info += f"<pre>Type:        {file.type or '-'}</pre>"
+        info = "<br/><u><b>%s</b></u><br/>" % str(file)
+        info += "<pre>Name:        %s</pre>" % file.name or '-'
+        info += "<pre>Owner:       %s</pre>" % file.owner or '-'
+        info += "<pre>Group:       %s</pre>" % file.group or '-'
+        info += "<pre>Size:        %s</pre>" % file.raw_size or '-'
+        info += "<pre>Permissions: %s</pre>" % file.permissions or '-'
+        info += "<pre>Date:        %s</pre>" % file.raw_date or '-'
+        info += "<pre>Type:        %s</pre>" % file.type or '-'
 
         if file.type == FileType.LINK:
-            info += f"<pre>Links to:    {file.link or '-'}</pre>"
+            info += "<pre>Links to:    %s</pre>" % file.link or '-'
 
         properties = QMessageBox(self)
         properties.setStyleSheet("background-color: #DDDDDD")
@@ -516,11 +505,10 @@ class TextView(QMainWindow):
     def __init__(self, filename, data):
         QMainWindow.__init__(self)
 
-        self.setMinimumSize(QSize(500, 300))    
-        self.setWindowTitle(filename) 
+        self.setMinimumSize(QSize(500, 300))
+        self.setWindowTitle(filename)
 
         self.text_edit = QTextEdit(self)
         self.setCentralWidget(self.text_edit)
         self.text_edit.insertPlainText(data)
-        # self.text_edit.setDisabled(True)
-        self.text_edit.move(10,10)
+        self.text_edit.move(10, 10)

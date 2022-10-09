@@ -1,19 +1,5 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+# ADB File Explorer
+# Copyright (C) 2022  Azat Aldeshov
 from typing import List
 
 from app.core.configurations import Settings
@@ -37,7 +23,7 @@ class FileRepository:
 
         file = convert_to_file(response.OutputData.strip())
         if not file:
-            return None, f"Unexpected string:\n{response.OutputData}"
+            return None, "Unexpected string:\n%s" % response.OutputData
 
         if file.type == FileType.LINK:
             args = adb.ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ') + '/']
@@ -85,11 +71,11 @@ class FileRepository:
     def open_file(cls, file: File) -> (str, str):
         args = [adb.ShellCommand.CAT, file.path.replace(' ', r'\ ')]
         if file.isdir:
-            return None, f"Can't open. {file.path} is a directory"
+            return None, "Can't open. %s is a directory" % file.path
         response = adb.shell(ADBManager.get_device().id, args)
         if not response.IsSuccessful:
-            return True, response.ErrorData or response.OutputData
-        return None, response.ErrorData or response.OutputData
+            return None, response.ErrorData or response.OutputData
+        return response.OutputData, response.ErrorData
 
     @classmethod
     def delete(cls, file: File) -> (str, str):
@@ -99,12 +85,7 @@ class FileRepository:
         response = adb.shell(ADBManager.get_device().id, args)
         if not response.IsSuccessful or response.OutputData:
             return None, response.ErrorData or response.OutputData
-        return f"{'Folder' if file.isdir else 'File'} '{file.path}' has been deleted", None
-
-    @classmethod
-    def download(cls, progress_callback: callable, source: str) -> (str, str):
-        destination = Settings.device_downloads_path(ADBManager.get_device())
-        return cls.download_to(progress_callback, source, destination)
+        return "%s '%s' has been deleted" % ('Folder' if file.isdir else 'File', file.path), None
 
     class UpDownHelper:
         def __init__(self, callback: callable):
@@ -120,7 +101,9 @@ class FileRepository:
                 self.messages.append(data)
 
     @classmethod
-    def download_to(cls, progress_callback: callable, source: str, destination: str) -> (str, str):
+    def download(cls, progress_callback: callable, source: str, destination: str) -> (str, str):
+        if not destination:
+            destination = Settings.device_downloads_path(ADBManager.get_device())
         if ADBManager.get_device() and source and destination:
             helper = cls.UpDownHelper(progress_callback)
             response = adb.pull(ADBManager.get_device().id, source, destination, helper.call)
@@ -135,7 +118,7 @@ class FileRepository:
         if not ADBManager.get_device():
             return None, "No device selected!"
 
-        args = [adb.ShellCommand.MKDIR, f'{ADBManager.path()}{name}'.replace(' ', r"\ ")]
+        args = [adb.ShellCommand.MKDIR, (ADBManager.path() + name).replace(' ', r"\ ")]
         response = adb.shell(ADBManager.get_device().id, args)
         if not response.IsSuccessful:
             return None, response.ErrorData or response.OutputData

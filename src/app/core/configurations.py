@@ -1,30 +1,16 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+# ADB File Explorer
+# Copyright (C) 2022  Azat Aldeshov
 import os
 import platform
 
 from pkg_resources import resource_filename
 
 from app.data.models import Device
-from app.helpers.tools import Singleton
+from app.helpers.tools import Singleton, get_settings_file, json_to_dict
 
 
 class Application:
-    __version__ = '1.2.0'
+    __version__ = '1.3.0'
     __author__ = 'Azat Aldeshov'
     __metaclass__ = Singleton
 
@@ -36,11 +22,39 @@ class Application:
         print('Platform %s' % platform.platform())
 
 
-class Settings:
-    __metaclass__ = Singleton
-
-    adb_path = "adb"
+class Settings(metaclass=Singleton):
     downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
+
+    @staticmethod
+    def adb_kill_server_at_exit():
+        data = json_to_dict(get_settings_file())
+        if 'adb_kill_server_at_exit' in data:
+            return bool(data['adb_kill_server_at_exit'])
+        return None
+
+    @staticmethod
+    def adb_path():
+        data = json_to_dict(get_settings_file())
+        if 'adb_path' in data:
+            return str(data['adb_path'])
+        return 'adb'
+
+    @staticmethod
+    def adb_core():
+        data = json_to_dict(get_settings_file())
+        if 'adb_core' in data and data['adb_core'] == 'external':
+            return 'external'
+        return 'python'
+
+    @staticmethod
+    def adb_run_as_root():
+        data = json_to_dict(get_settings_file())
+        return 'adb_run_as_root' in data and data['adb_run_as_root'] is True
+
+    @staticmethod
+    def preserve_timestamp():
+        data = json_to_dict(get_settings_file())
+        return 'preserve_timestamp' in data and data['preserve_timestamp'] is True
 
     @staticmethod
     def device_downloads_path(device: Device) -> str:

@@ -1,19 +1,5 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+# ADB File Explorer
+# Copyright (C) 2022  Azat Aldeshov
 import datetime
 import re
 from typing import List
@@ -69,7 +55,7 @@ def convert_to_file(data: str) -> File:
         code = permission[0]
         if ['s', 'd', '-', 'l'].__contains__(code):
             size = int(fields[4])
-            date = datetime.datetime.strptime(f"{fields[5]} {fields[6]}", date_pattern)
+            date = datetime.datetime.strptime("%s %s" % (fields[5], fields[6]), date_pattern)
             name = " ".join(fields[7:])
             if code == 'l':
                 name = " ".join(fields[7:fields.index('->')])
@@ -77,7 +63,7 @@ def convert_to_file(data: str) -> File:
         elif ['c', 'b'].__contains__(code):
             other = fields[4]
             size = int(fields[5])
-            date = datetime.datetime.strptime(f"{fields[6]} {fields[7]}", date_pattern)
+            date = datetime.datetime.strptime("%s %s" % (fields[6], fields[7]), date_pattern)
             name = fields[8]
 
         if name.startswith('/'):
@@ -110,20 +96,20 @@ def convert_to_file(data: str) -> File:
         code = permission[0]
         if code == 'd' or code == 's':
             name = " ".join(fields[5:])
-            date = datetime.datetime.strptime(f"{fields[3]} {fields[4]}", date_pattern)
+            date = datetime.datetime.strptime("%s %s" % (fields[3], fields[4]), date_pattern)
         elif code == '-':
             size = int(fields[3])
             name = " ".join(fields[6:])
-            date = datetime.datetime.strptime(f"{fields[4]} {fields[5]}", date_pattern)
+            date = datetime.datetime.strptime("%s %s" % (fields[4], fields[5]), date_pattern)
         elif code == 'l':
             name = " ".join(fields[5:fields.index('->')])
             link = " ".join(fields[fields.index('->') + 1:])
-            date = datetime.datetime.strptime(f"{fields[3]} {fields[4]}", date_pattern)
+            date = datetime.datetime.strptime("%s %s" % (fields[3], fields[4]), date_pattern)
         elif code == 'c' or code == 'b':
             size = int(fields[4])
             other = fields[3]
             name = " ".join(fields[7:])
-            date = datetime.datetime.strptime(f"{fields[5]} {fields[6]}", date_pattern)
+            date = datetime.datetime.strptime("%s %s" % (fields[5], fields[6]), date_pattern)
 
         if name.startswith('/'):
             name = name[name.rindex('/') + 1:]
@@ -165,8 +151,7 @@ def convert_to_file_list_a(data: str, **kwargs) -> List[File]:
             permission = re__permission[0]
             size = int(size_date_name[0] or 0)
             date_time = datetime.datetime.strptime(
-                f"{size_date_name[1]} {size_date_name[2]}",
-                '%Y-%m-%d %H:%M'
+                "%s %s" % (size_date_name[1], size_date_name[2]), '%Y-%m-%d %H:%M'
             )
             names = size_date_name[3:]
 
@@ -177,14 +162,14 @@ def convert_to_file_list_a(data: str, **kwargs) -> List[File]:
                 name = " ".join(names[:names.index('->')])
                 link = " ".join(names[names.index('->') + 1:])
                 link_type = FileType.FILE
-                if dirs.__contains__(f"{path}{name}/"):
+                if dirs.__contains__(path + name + '/'):
                     link_type = FileType.DIRECTORY
             files.append(
                 File(
                     name=name,
                     size=size,
                     link=link,
-                    path=f"{path}{name}",
+                    path=(path + name),
                     link_type=link_type,
                     date_time=date_time,
                     permissions=permission,

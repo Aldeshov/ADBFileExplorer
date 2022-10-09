@@ -1,19 +1,6 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+# ADB File Explorer
+# Copyright (C) 2022  Azat Aldeshov
+import json
 import logging
 import os
 import subprocess
@@ -37,6 +24,7 @@ class CommonProcess:
     stdout -- define stdout (default subprocess.PIPE)
     stdout_callback -- callable function, params: (data: str) -> None (default None)
     """
+
     def __init__(self, arguments: list, stdout=subprocess.PIPE, stdout_callback: callable = None):
         self.ErrorData = None
         self.OutputData = None
@@ -151,5 +139,23 @@ def read_string_from_file(path: str):
         return text
     return str()
 
+
 def quote_file_name(path: str):
     return '\'' + path + '\''
+
+
+def get_settings_file():
+    if not os.path.exists('./settings.json'):
+        file = QFile('./settings.json')
+        file.open(QIODevice.WriteOnly)
+        file.write(b'{}')
+        file.close()
+    return './settings.json'
+
+
+def json_to_dict(path: str):
+    try:
+        return dict(json.loads(read_string_from_file(path)))
+    except BaseException as exception:
+        logging.error('File %s. %s' % (path, exception))
+        return dict()

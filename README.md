@@ -41,7 +41,6 @@ from app.core import Adb
 # ...
 if __name__ == '__main__':
     adb = Adb()
-    adb.set_core(Adb.EXTERNAL_TOOL_ADB)  # To use command-line tool `adb`
     adb.start()
 # ...
 ```

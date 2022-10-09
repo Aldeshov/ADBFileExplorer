@@ -1,5 +1,5 @@
-# ADB File Explorer `tool`
-# Copyright (C) 2022  Azat Aldeshov azata1919@gmail.com
+# ADB File Explorer (python)
+# Copyright (C) 2022  Azat Aldeshov
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +13,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 import sys
 
 from PyQt5.QtWidgets import QApplication
@@ -24,10 +23,7 @@ from gui.window import MainWindow
 from helpers.tools import read_string_from_file
 
 if __name__ == '__main__':
-    adb = Adb()
-    # adb.set_core(Adb.EXTERNAL_TOOL_ADB)
-    adb.start()
-
+    Adb.start()
     app = QApplication(sys.argv)
 
     window = MainWindow()
