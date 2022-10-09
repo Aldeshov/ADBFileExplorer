@@ -58,6 +58,8 @@ class ShellCommand:
 
     MKDIR = 'mkdir'
 
+    CAT = 'cat'
+
 
 def validate():
     return version().IsSuccessful
@@ -106,3 +108,7 @@ def shell(device_id: str, args: list):
 
 def file_list(device_id: str, path: str):
     return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, ShellCommand.LS, path])
+
+
+def read_file(device_id: str, path: str):
+    return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, ShellCommand.CAT, path])

@@ -44,6 +44,13 @@ class FileRepository:
             return android_adb.FileRepository.rename(file, name)
 
     @classmethod
+    def open_file(cls, file: File) -> (str, str):
+        if Adb.CORE == Adb.PYTHON_ADB_SHELL:
+            return python_adb.FileRepository.open_file(file)
+        elif Adb.CORE == Adb.EXTERNAL_TOOL_ADB:
+            return android_adb.FileRepository.open_file(file)
+
+    @classmethod
     def delete(cls, file: File) -> (str, str):
         if Adb.CORE == Adb.PYTHON_ADB_SHELL:
             return python_adb.FileRepository.delete(file)
