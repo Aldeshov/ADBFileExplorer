@@ -150,3 +150,6 @@ def read_string_from_file(path: str):
         file.close()
         return text
     return str()
+
+def quote_file_name(path: str):
+    return '\'' + path + '\''

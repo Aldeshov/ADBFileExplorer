@@ -132,14 +132,16 @@ class FileRepository:
         try:
             args = [ShellCommand.CAT, file.path.replace(' ', r'\ ')]
             if file.isdir:
-                return f"Can't open. {file.path} is a directory", None
+                file(cls, file.path)
+                return None, f"Can't open. {file.path} is a directory"
             response = PythonADBManager.device.shell(shlex.join(args))
-            if not response:
-                return 'Error', None
-            return None, response
+            if not response.IsSuccessful:
+                return True, response.ErrorData or response.OutputData
+            return None, response.ErrorData or response.OutputData
         except BaseException as error:
             logging.error(f"Unexpected {error=}, {type(error)=}")
             return None, error
+
 
     @classmethod
     def delete(cls, file: File) -> (str, str):

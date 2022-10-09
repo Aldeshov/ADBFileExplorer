@@ -254,6 +254,7 @@ class FileExplorerWidget(QWidget):
         self.list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.list.customContextMenuRequested.connect(self.context_menu)
         self.list.setStyleSheet(read_string_from_file(Resources.style_file_list))
+        self.list.setSelectionMode(QListView.SelectionMode.ExtendedSelection)
         self.layout().addWidget(self.list)
 
         self.loading = QLabel(self)
@@ -276,9 +277,9 @@ class FileExplorerWidget(QWidget):
         Global().communicate.files__refresh.connect(self.update)
 
     @property
-    def file(self):
-        if self.list and self.list.currentIndex():
-            return self.model.items[self.list.currentIndex().row()]
+    def files(self):
+        if self.list and len(self.list.selectedIndexes()) > 0:
+            return map(lambda index: self.model.items[index.row()], self.list.selectedIndexes())
 
     def update(self):
         super(FileExplorerWidget, self).update()
@@ -416,56 +417,45 @@ class FileExplorerWidget(QWidget):
                 self.text_view_window.show()
 
     def delete(self):
+        fileNames = ', '.join(map(lambda f: f.name, self.files))
         reply = QMessageBox.critical(
             self,
             'Delete',
-            f"Do you want to delete '{self.file.name}'? It cannot be undone!",
+            f"Do you want to delete '{fileNames}'? It cannot be undone!",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
-            data, error = FileRepository.delete(self.file)
-            if data:
-                Global().communicate.notification.emit(
-                    MessageData(
-                        timeout=10000,
-                        title="Delete",
-                        body=data,
+            for file in self.files:
+                data, error = FileRepository.delete(file)
+                if data:
+                    Global().communicate.notification.emit(
+                        MessageData(
+                            timeout=10000,
+                            title="Delete",
+                            body=data,
+                        )
                     )
-                )
-            if error:
-                Global().communicate.notification.emit(
-                    MessageData(
-                        timeout=10000,
-                        title="Delete",
-                        body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                if error:
+                    Global().communicate.notification.emit(
+                        MessageData(
+                            timeout=10000,
+                            title="Delete",
+                            body=f"<span style='color: red; font-weight: 600'> {error} </span>",
+                        )
                     )
-                )
             Global.communicate.files__refresh.emit()
 
     def download(self):
-        helper = ProgressCallbackHelper()
-        worker = AsyncRepositoryWorker(
-            worker_id=self.DOWNLOAD_WORKER_ID,
-            name="Download",
-            repository_method=FileRepository.download,
-            response_callback=self.default_response,
-            arguments=(helper.progress_callback.emit, self.file.path)
-        )
-        if Adb.worker().work(worker):
-            Global().communicate.notification.emit(
-                MessageData(
-                    title="Downloading",
-                    message_type=MessageType.LOADING_MESSAGE,
-                    message_catcher=worker.set_loading_widget
-                )
-            )
-            helper.setup(worker, worker.update_loading_widget)
-            worker.start()
+        self.download_files()
 
     def download_to(self):
         dir_name = QFileDialog.getExistingDirectory(self, 'Download to', '~')
         if dir_name:
+            self.download_files(dir_name)
+
+    def download_files(self, destination: str=None):
+        for file in self.files:
             helper = ProgressCallbackHelper()
             worker = AsyncRepositoryWorker(
                 worker_id=self.DOWNLOAD_WORKER_ID,
@@ -473,7 +463,7 @@ class FileExplorerWidget(QWidget):
                 repository_method=FileRepository.download_to,
                 response_callback=self.default_response,
                 arguments=(
-                    helper.progress_callback.emit, self.file.path, dir_name
+                    helper.progress_callback.emit, file.path, destination
                 )
             )
             if Adb.worker().work(worker):

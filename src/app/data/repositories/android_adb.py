@@ -85,7 +85,7 @@ class FileRepository:
     def open_file(cls, file: File) -> (str, str):
         args = [adb.ShellCommand.CAT, file.path.replace(' ', r'\ ')]
         if file.isdir:
-            return None, "Can't open. %s is a directory" % file.path
+            return None, f"Can't open. {file.path} is a directory"
         response = adb.shell(ADBManager.get_device().id, args)
         if not response.IsSuccessful:
             return True, response.ErrorData or response.OutputData
