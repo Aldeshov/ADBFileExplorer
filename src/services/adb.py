@@ -21,6 +21,7 @@ ADB_PATH = Settings.adb__custom_path_value if Settings.adb__custom_path_enabled 
 
 
 class Parameter:
+    ROOT = 'root'
     DEVICE = '-s'
     PULL = 'pull -a'
     PUSH = 'push'
@@ -97,7 +98,10 @@ def push(device_id: str, source_path: str, destination_path: str, stdout_callbac
 
 
 def shell(device_id: str, args: list):
-    return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
+    try:
+        return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.ROOT] + args)
+    except:           
+        return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
 
 
 def file_list(device_id: str, path: str):
