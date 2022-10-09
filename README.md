@@ -1,6 +1,9 @@
-# ADB File Explorer `tool` `python`
+# ADB File Explorer
 
-Simple File Explorer for adb devices. Uses python library [`adb-shell`](https://github.com/JeffLIrion/adb_shell) or command-line tool [`adb`](https://developer.android.com/studio/command-line/adb?hl=ru).
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+[![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/PyCQA/pylint)
+
+Simple File Explorer for adb devices. Uses python library [`adb-shell`](https://github.com/JeffLIrion/adb_shell) or command-line tool [`adb`](https://developer.android.com/studio/command-line/adb).
 
 Features:
 
@@ -30,20 +33,30 @@ pip install PyQt5 libusb1 adb-shell
 
 ## Launch
 
-File `src` / `app.py`
+File `settings.json`. Settings file.
+Currently, this file may be created anywhere in project folders, Usually in `src` or root folder.
 
-```python
-from core.main import Adb
-# ...
-if __name__ == '__main__':
-    adb = Adb()
-    adb.set_core(Adb.EXTERNAL_TOOL_ADB)  # To use command-line tool `adb`
-    adb.start()
-# ...
+```json
+{
+  "adb_path": "adb",
+  "adb_core": "external",
+  "adb_kill_server_at_exit": false,
+  "preserve_timestamp": true,
+  "adb_run_as_root": false
+}
 ```
 
++ `adb_path` - Full adb path or just 'adb' if executable is in the PATH variables
++ `adb_core` - Set 'external' to use external adb executable, otherwise app will use `adb-shell`
+
+... etc
+
 ```shell
-python src/app.py # To start application
+cd ADBFileExplorer
+# First install python-venv in root folder
+pip install -r requirements.txt
+run.bat # To start application on Windows
+bash run.sh # To start application on Linux...
 ```
 
 ## Attention
@@ -54,8 +67,8 @@ Use the adb command line tool for a better experience
 
 ## License
 
-```
-ADB File Explorer `python-tool`
+```text
+ADB File Explorer [python-app]
 Copyright (C) 2022  Azat Aldeshov
 
 This program is free software: you can redistribute it and/or modify
