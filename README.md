@@ -1,6 +1,9 @@
-# ADB File Explorer `tool` `python`
+# ADB File Explorer
 
-Simple File Explorer for adb devices. Uses python library [`adb-shell`](https://github.com/JeffLIrion/adb_shell) or command-line tool [`adb`](https://developer.android.com/studio/command-line/adb?hl=ru).
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+[![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/PyCQA/pylint)
+
+Simple File Explorer for adb devices. Uses python library [`adb-shell`](https://github.com/JeffLIrion/adb_shell) or command-line tool [`adb`](https://developer.android.com/studio/command-line/adb).
 
 Features:
 
@@ -33,7 +36,8 @@ pip install PyQt5 libusb1 adb-shell
 File `src` / `app.py`
 
 ```python
-from core.main import Adb
+from app.core import Adb
+
 # ...
 if __name__ == '__main__':
     adb = Adb()
@@ -43,7 +47,7 @@ if __name__ == '__main__':
 ```
 
 ```shell
-python src/app.py # To start application
+python app/__main__.py # To start application
 ```
 
 ## Attention
