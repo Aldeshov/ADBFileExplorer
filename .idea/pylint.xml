@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="PylintConfigService">
-    <option name="customPylintPath" value="C:\Users\Azat\ADBFileExplorer\venv\Scripts\pylint.exe" />
-    <option name="pylintrcPath" value="C:\Users\Azat\ADBFileExplorer\.pylintrc" />
-  </component>
-</project>
