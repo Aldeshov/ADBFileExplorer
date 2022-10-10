@@ -66,7 +66,7 @@ class MenuBar(QMenuBar):
                     message_catcher=worker.set_loading_widget
                 )
             )
-            Global().communicate.status_bar.emit('Operation: %s... Please wait.', 3000) % worker.name
+            Global().communicate.status_bar.emit('Operation: %s... Please wait.' % worker.name, 3000)
             worker.start()
 
     def connect_device(self):
@@ -90,7 +90,7 @@ class MenuBar(QMenuBar):
                         message_catcher=worker.set_loading_widget
                     )
                 )
-                Global().communicate.status_bar.emit('Operation: %s... Please wait.', 3000) % worker.name
+                Global().communicate.status_bar.emit('Operation: %s... Please wait.' % worker.name, 3000)
                 worker.start()
 
     @staticmethod
