@@ -5,4 +5,4 @@ root=$(pwd)
 path=$app:$src:$root
 export PYTHONUNBUFFERED=1
 export PYTHONPATH=$path:$PYTHONPATH
-python.exe ./src/app
+python ./src/app
