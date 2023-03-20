@@ -26,7 +26,7 @@ Files
 
 * `Python3` (below version 3.8 not tested)
 ```shell
-sudo apt-get install python3-pyqt5  # For Linux Ubuntu
+sudo apt-get install python3-pip python3-pyqt5  # For Linux Ubuntu
 pip install PyQt5 libusb1 adb-shell
 ```
 * `adb` (binary) should exist in project root folder or in `PATH` variables
