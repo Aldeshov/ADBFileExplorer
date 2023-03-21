@@ -29,30 +29,30 @@ Files
 sudo apt-get install python3-pyqt5  # For Linux Ubuntu
 pip install PyQt5 libusb1 adb-shell
 ```
-* `adb` (binary) should exist in project root folder or in `PATH` variables
+* `adb` (binary) should exist in project root folder or in `$PATH`
 
 ## Launch
 
-File `settings.json`. Settings file.
-Currently, this file may be created anywhere in project folders, Usually in `src` or root folder.
+1. Clone the repo
+2. cd ADBFileExplorer
+3. Edit `./settings.json` from the project root if necessary.
 
 ```json
 {
   "adb_path": "adb",
-  "adb_core": "external",
   "adb_kill_server_at_exit": false,
   "preserve_timestamp": true,
   "adb_run_as_root": false
 }
 ```
 
-+ `adb_path` - Full adb path or just 'adb' if executable is in the PATH variables
-+ `adb_core` - Set 'external' to use external adb executable, otherwise app will use `adb-shell`
++ `adb_path` - Full adb path or just 'adb' if the executable is in `$PATH`
++ `adb_core` - Set to 'external' to use external `adb` executable, otherwise the app will use `adb-shell`
 
-... etc
+
 
 ```shell
-cd ADBFileExplorer
+
 # First install python-venv in root folder
 pip install -r requirements.txt
 run.bat # To start application on Windows
@@ -61,9 +61,8 @@ bash run.sh # To start application on Linux...
 
 ## Attention
 
-Application by default uses `adb-shell`.
-There may be problems with listing, pushing, pulling files using `adb-shell`.
-Use the adb command line tool for a better experience
+Application uses by default `adb-shell`. There may be problems with listing, pushing, or pulling files using `adb-shell`.
+For a better experience, try adding `"adb_core": "external"` to `settings.json`, but beware that the app may not be able to access the Android device at all.
 
 ## License
 
