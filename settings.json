@@ -1,6 +1,5 @@
 {
   "adb_path": "adb",
-  "adb_core": "external",
   "adb_kill_server_at_exit": false,
   "preserve_timestamp": true,
   "adb_run_as_root": false
