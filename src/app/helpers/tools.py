@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
 
 from PyQt5 import QtCore
@@ -115,11 +116,17 @@ class Singleton(type):
 
 
 def get_python_rsa_keys_signer(rerun=True) -> PythonRSASigner:
-    key = os.path.expanduser('~/.android/adbkey')
-    if os.path.isfile(key):
-        with open(key) as f:
+    privkey = os.path.expanduser('~/.android/adbkey')
+    if os.path.isfile(privkey):
+        with open(privkey) as f:
             private = f.read()
-        with open(key + '.pub') as f:
+        pubkey = privkey + '.pub'
+        if not os.path.isfile(pubkey):
+            if shutil.which('ssh-keygen'):
+                os.system(f'ssh-keygen -y -f {privkey} > {pubkey}')
+            else:
+                raise OSError('Could not call ssh-keygen!')
+        with open(pubkey) as f:
             public = f.read()
         return PythonRSASigner(public, private)
     elif rerun:
