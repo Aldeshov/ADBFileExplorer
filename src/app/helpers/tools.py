@@ -151,15 +151,6 @@ def quote_file_name(path: str):
     return '\'' + path + '\''
 
 
-def get_settings_file():
-    if not os.path.exists('./settings.json'):
-        file = QFile('./settings.json')
-        file.open(QIODevice.WriteOnly)
-        file.write(b'{}')
-        file.close()
-    return './settings.json'
-
-
 def json_to_dict(path: str):
     try:
         return dict(json.loads(read_string_from_file(path)))

@@ -164,7 +164,7 @@ class DeviceExplorerWidget(QWidget):
             self.model.populate(devices)
 
     def open(self):
-        if self.device.type == DeviceType.DEVICE:
+        if self.device.id:
             if Adb.manager().set_device(self.device):
                 Global().communicate.files.emit()
             else:

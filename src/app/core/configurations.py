@@ -3,16 +3,16 @@
 import os
 import platform
 
+from PyQt5.QtCore import QFile, QIODevice
 from pkg_resources import resource_filename
 
 from app.data.models import Device
-from app.helpers.tools import Singleton, get_settings_file, json_to_dict
+from app.helpers.tools import Singleton, json_to_dict
 
 
-class Application:
+class Application(metaclass=Singleton):
     __version__ = '1.3.0'
     __author__ = 'Azat Aldeshov'
-    __metaclass__ = Singleton
 
     def __init__(self):
         print('─────────────────────────────────')
@@ -24,40 +24,56 @@ class Application:
 
 class Settings(metaclass=Singleton):
     downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
+    filename = resource_filename('app', 'settings.json')
+    data = None
 
-    @staticmethod
-    def adb_kill_server_at_exit():
-        data = json_to_dict(get_settings_file())
-        if 'adb_kill_server_at_exit' in data:
-            return bool(data['adb_kill_server_at_exit'])
+    @classmethod
+    def initialize(cls):
+        if cls.data is not None:
+            return True
+
+        if not os.path.exists(cls.filename):
+            print('Settings file not found! Creating one: %s' % cls.filename)
+            file = QFile(cls.filename)
+            file.open(QIODevice.WriteOnly)
+            file.write(b'{}')
+            file.close()
+
+        cls.data = json_to_dict(cls.filename)
+
+    @classmethod
+    def adb_kill_server_at_exit(cls):
+        cls.initialize()
+        if 'adb_kill_server_at_exit' in cls.data:
+            return bool(cls.data['adb_kill_server_at_exit'])
         return None
 
-    @staticmethod
-    def adb_path():
-        data = json_to_dict(get_settings_file())
-        if 'adb_path' in data:
-            return str(data['adb_path'])
+    @classmethod
+    def adb_path(cls):
+        cls.initialize()
+        if 'adb_path' in cls.data:
+            return str(cls.data['adb_path'])
         return 'adb'
 
-    @staticmethod
-    def adb_core():
-        data = json_to_dict(get_settings_file())
-        if 'adb_core' in data and data['adb_core'] == 'external':
+    @classmethod
+    def adb_core(cls):
+        cls.initialize()
+        if 'adb_core' in cls.data and cls.data['adb_core'] == 'external':
             return 'external'
         return 'python'
 
-    @staticmethod
-    def adb_run_as_root():
-        data = json_to_dict(get_settings_file())
-        return 'adb_run_as_root' in data and data['adb_run_as_root'] is True
+    @classmethod
+    def adb_run_as_root(cls):
+        cls.initialize()
+        return 'adb_run_as_root' in cls.data and cls.data['adb_run_as_root'] is True
 
-    @staticmethod
-    def preserve_timestamp():
-        data = json_to_dict(get_settings_file())
-        return 'preserve_timestamp' in data and data['preserve_timestamp'] is True
+    @classmethod
+    def preserve_timestamp(cls):
+        cls.initialize()
+        return 'preserve_timestamp' in cls.data and cls.data['preserve_timestamp'] is True
 
-    @staticmethod
-    def device_downloads_path(device: Device) -> str:
+    @classmethod
+    def device_downloads_path(cls, device: Device) -> str:
         if not os.path.isdir(Settings.downloads_path):
             os.mkdir(Settings.downloads_path)
         if device:

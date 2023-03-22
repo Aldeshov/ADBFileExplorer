@@ -35,11 +35,12 @@ pip install PyQt5 libusb1 adb-shell
 
 1. Clone the repo
 2. cd ADBFileExplorer
-3. Edit `./settings.json` from the project root if necessary.
+3. Edit [settings.json](src%2Fapp%2Fsettings.json) from the project root if necessary. `src/app/settings.json`
 
-```json
+```json5
 {
   "adb_path": "adb",
+//  "adb_core": "external",
   "adb_kill_server_at_exit": false,
   "preserve_timestamp": true,
   "adb_run_as_root": false
@@ -50,10 +51,8 @@ pip install PyQt5 libusb1 adb-shell
 + `adb_core` - Set to 'external' to use external `adb` executable, otherwise the app will use `adb-shell`
 
 
-
 ```shell
-
-# First install python-venv in root folder
+# First install python-venv in root folder. It should be like ADBFileExplorer/venv
 pip install -r requirements.txt
 run.bat # To start application on Windows
 bash run.sh # To start application on Linux...
@@ -62,7 +61,7 @@ bash run.sh # To start application on Linux...
 ## Attention
 
 Application uses by default `adb-shell`. There may be problems with listing, pushing, or pulling files using `adb-shell`.
-For a better experience, try adding `"adb_core": "external"` to `settings.json`, but beware that the app may not be able to access the Android device at all.
+For a better experience, try adding `"adb_core": "external"` to `settings.json`.
 
 ## License
 
