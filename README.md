@@ -35,7 +35,10 @@ pip install PyQt5 libusb1 adb-shell
 
 1. Clone the repo
 2. cd ADBFileExplorer
-3. Edit [settings.json](src%2Fapp%2Fsettings.json) from the project root if necessary. `src/app/settings.json`
+3. create virtual environment by running `python -m venv venv`
+4. activate virtual environment by running `. venv/bin/activate`
+5. install requirements by running `pip install -r requirements.txt`
+6. Edit [settings.json](src%2Fapp%2Fsettings.json) from the project root if necessary. `src/app/settings.json`
 
 ```json5
 {
@@ -51,12 +54,7 @@ pip install PyQt5 libusb1 adb-shell
 + `adb_core` - Set to 'external' to use external `adb` executable, otherwise the app will use `adb-shell`
 
 
-```shell
-# First install python-venv in root folder. It should be like ADBFileExplorer/venv
-pip install -r requirements.txt
-run.bat # To start application on Windows
-bash run.sh # To start application on Linux...
-```
+
 
 ## Attention
 
