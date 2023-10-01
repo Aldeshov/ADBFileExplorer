@@ -134,7 +134,7 @@ def get_python_rsa_keys_signer(rerun=True) -> PythonRSASigner:
         if not os.path.isfile(path):
             if not os.path.isdir(path):
                 os.mkdir(path)
-            keygen(key)
+            keygen(privkey)
             return get_python_rsa_keys_signer(False)
 
 
