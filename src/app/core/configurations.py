@@ -11,7 +11,7 @@ from app.helpers.tools import Singleton, json_to_dict
 
 
 class Application(metaclass=Singleton):
-    __version__ = '1.3.0'
+    __version__ = '1.4.0'
     __author__ = 'Azat Aldeshov'
 
     def __init__(self):
