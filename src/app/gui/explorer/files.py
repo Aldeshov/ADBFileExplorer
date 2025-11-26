@@ -49,7 +49,7 @@ class FileHeaderWidget(QWidget):
         self.date.setSizePolicy(policy)
         self.layout().addWidget(self.date)
 
-        self.setStyleSheet("QWidget { background-color: #E5E5E5; font-weight: 500; border: 1px solid #C0C0C0 }")
+        self.setStyleSheet(read_string_from_file(Resources.style_file_header))
 
 
 class FileExplorerToolbar(QWidget):
@@ -108,7 +108,8 @@ class FileItemDelegate(QStyledItemDelegate):
         style = option.widget.style() if option.widget else QApplication.style()
         style.drawControl(QStyle.CE_ItemViewItem, option, painter, option.widget)
 
-        line_color = QColor("#CCCCCC")
+        # Use palette-based divider color instead of hardcoded hex
+        line_color = option.palette.color(QPalette.Mid)
         text_color = option.palette.color(QPalette.Normal, QPalette.Text)
 
         top = option.rect.top()
@@ -195,7 +196,8 @@ class FileListModel(QAbstractListModel):
                     MessageData(
                         timeout=10000,
                         title="Rename",
-                        body="<span style='color: red; font-weight: 600'> %s </span>" % error,
+                        body=str(error),
+                        message_type=MessageType.ERROR_MESSAGE,
                     )
                 )
             Global.communicate.files__refresh.emit()
@@ -251,7 +253,7 @@ class FileExplorerWidget(QWidget):
 
         self.empty_label = QLabel("Folder is empty", self)
         self.empty_label.setAlignment(Qt.AlignCenter)
-        self.empty_label.setStyleSheet("color: #969696; border: 1px solid #969696")
+        self.empty_label.setStyleSheet(read_string_from_file(Resources.style_empty_label))
         self.layout().addWidget(self.empty_label)
 
         self.main_layout.setStretch(self.layout().count() - 1, 1)
@@ -308,7 +310,8 @@ class FileExplorerWidget(QWidget):
                     MessageData(
                         title='Files',
                         timeout=15000,
-                        body="<span style='color: red; font-weight: 600'> %s </span>" % error
+                        body=str(error),
+                        message_type=MessageType.ERROR_MESSAGE,
                     )
                 )
         if not files:
@@ -377,7 +380,8 @@ class FileExplorerWidget(QWidget):
                 MessageData(
                     title='Download error',
                     timeout=15000,
-                    body="<span style='color: red; font-weight: 600'> %s </span>" % error
+                    body=str(error),
+                    message_type=MessageType.ERROR_MESSAGE,
                 )
             )
         if data:
@@ -401,7 +405,8 @@ class FileExplorerWidget(QWidget):
                     MessageData(
                         title='File',
                         timeout=15000,
-                        body="<span style='color: red; font-weight: 600'> %s </span>" % error
+                        body=str(error),
+                        message_type=MessageType.ERROR_MESSAGE,
                     )
                 )
             else:
@@ -433,7 +438,8 @@ class FileExplorerWidget(QWidget):
                         MessageData(
                             timeout=10000,
                             title="Delete",
-                            body="<span style='color: red; font-weight: 600'> %s </span>" % error,
+                            body=str(error),
+                            message_type=MessageType.ERROR_MESSAGE,
                         )
                     )
             Global.communicate.files__refresh.emit()
@@ -475,7 +481,8 @@ class FileExplorerWidget(QWidget):
                 MessageData(
                     timeout=10000,
                     title="Opening folder",
-                    body="<span style='color: red; font-weight: 600'> %s </span>" % error,
+                    body=str(error),
+                    message_type=MessageType.ERROR_MESSAGE,
                 )
             )
 
@@ -492,7 +499,7 @@ class FileExplorerWidget(QWidget):
             info += "<pre>Links to:    %s</pre>" % file.link or '-'
 
         properties = QMessageBox(self)
-        properties.setStyleSheet("background-color: #DDDDDD")
+        properties.setStyleSheet(read_string_from_file(Resources.style_properties_dialog))
         properties.setIconPixmap(
             QPixmap(self.model.icon_path(self.list.currentIndex())).scaled(128, 128, Qt.KeepAspectRatio)
         )

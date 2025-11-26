@@ -32,15 +32,26 @@ class CommonProcess:
         self.IsSuccessful = False
         if arguments:
             try:
-                process = subprocess.Popen(arguments, stdout=stdout, stderr=subprocess.PIPE)
+                # Merge stderr into stdout so the callback receives both
+                stderr_target = subprocess.STDOUT if stdout_callback else subprocess.PIPE
+                process = subprocess.Popen(arguments, stdout=stdout, stderr=stderr_target)
                 if stdout == subprocess.PIPE and stdout_callback:
                     for line in iter(process.stdout.readline, b''):
                         stdout_callback(line.decode(encoding='utf-8'))
                 data, error = process.communicate()
                 self.ExitCode = process.poll()
                 self.IsSuccessful = self.ExitCode == 0
-                self.ErrorData = error.decode(encoding='utf-8') if error else None
-                self.OutputData = data.decode(encoding='utf-8') if data else None
+
+                decoded_data = data.decode(encoding='utf-8') if data else None
+                decoded_error = error.decode(encoding='utf-8') if error else None
+
+                if self.IsSuccessful:
+                    self.OutputData = decoded_data or decoded_error
+                    self.ErrorData = None
+                else:
+                    self.ErrorData = decoded_error
+                    self.OutputData = decoded_data
+
             except FileNotFoundError:
                 self.ErrorData = "Command '%s' failed! File (command) '%s' not found!" % \
                                  (' '.join(arguments), arguments[0])
@@ -130,12 +141,12 @@ def get_python_rsa_keys_signer(rerun=True) -> PythonRSASigner:
             public = f.read()
         return PythonRSASigner(public, private)
     elif rerun:
+        # Ensure the ~/.android directory exists before generating keys
         path = os.path.expanduser('~/.android')
-        if not os.path.isfile(path):
-            if not os.path.isdir(path):
-                os.mkdir(path)
-            keygen(key)
-            return get_python_rsa_keys_signer(False)
+        if not os.path.isdir(path):
+            os.mkdir(path)
+        keygen(privkey)
+        return get_python_rsa_keys_signer(False)
 
 
 def read_string_from_file(path: str):

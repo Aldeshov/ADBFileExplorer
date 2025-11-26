@@ -17,18 +17,25 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from core.configurations import Resources, Application
+from core.configurations import Application
 from core.main import Adb
 from gui.window import MainWindow
-from helpers.tools import read_string_from_file
 
 if __name__ == '__main__':
     Application()
     Adb.start()
     app = QApplication(sys.argv)
 
+    app.setStyle('Fusion')
+
+    # Force the light theme - just reset any dark styling
+    # app.setPalette(app.style().standardPalette())
+
+    font = app.font()
+    font.setPointSize(14)
+    app.setFont(font)
+
     window = MainWindow()
-    window.setStyleSheet(read_string_from_file(Resources.style_window))
     window.show()
 
     sys.exit(app.exec_())

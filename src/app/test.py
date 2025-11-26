@@ -32,6 +32,8 @@ from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QGridLayout
 
 from data.models import MessageType
 from app.gui.notification import NotificationCenter
+from app.core.configurations import Resources
+from app.helpers.tools import read_string_from_file
 
 
 class NotifyExample(QWidget):
@@ -46,7 +48,7 @@ class NotifyExample(QWidget):
 
         self.setMinimumSize(640, 480)
         self.notification_center = NotificationCenter(self)
-        self.notification_center.setStyleSheet("background: #00FF00")  # Scroll Area Test
+        self.notification_center.setStyleSheet(read_string_from_file(Resources.style_notification_center))  # Scroll Area Test
 
     def notify(self):
         if self.counter % 2 == 0:
@@ -58,10 +60,16 @@ class NotifyExample(QWidget):
                    "paginator. Except saint toccata cupidity non president, sunt in gulp" \
                    "qui official underused moll-it anim id est labor."
             self.notification_center.append_notification(title="Message TEST", body=text, timeout=10000)
+        elif self.counter % 3 == 0:
+            self.notification_center.append_notification(
+                title="Error message",
+                body="Lorem ipsum dolor sit amet",
+                message_type=MessageType.ERROR_MESSAGE
+            )
         elif self.counter % 2 == 1:
             self.notification_center.append_notification(
-                title="Message",
-                body="<span style='color: red; font-weight: 600'>Lorem ipsum dolor sit amet</span>",
+                title="Loading message",
+                body="Lorem ipsum dolor sit amet",
                 message_type=MessageType.LOADING_MESSAGE
             )
         self.counter = self.counter + 1
@@ -74,6 +82,12 @@ class NotifyExample(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+
+    app.setStyle('Fusion')
+
+    # Force the light theme - just reset any dark styling
+    app.setPalette(app.style().standardPalette())
+
     example = NotifyExample()
     example.show()
     app.exec_()

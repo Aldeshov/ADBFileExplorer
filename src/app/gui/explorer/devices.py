@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QStyledItemDelegate, Q
 from app.core.configurations import Resources
 from app.core.main import Adb
 from app.core.managers import Global
-from app.data.models import DeviceType, MessageData
+from app.data.models import DeviceType, MessageData, MessageType
 from app.data.repositories import DeviceRepository
 from app.helpers.tools import AsyncRepositoryWorker, read_string_from_file
 
@@ -113,7 +113,7 @@ class DeviceExplorerWidget(QWidget):
         self.empty_label = QLabel("No connected devices", self)
         self.empty_label.setAlignment(Qt.AlignTop)
         self.empty_label.setContentsMargins(15, 10, 0, 0)
-        self.empty_label.setStyleSheet("color: #969696; border: 1px solid #969696")
+        self.empty_label.setStyleSheet(read_string_from_file(Resources.style_empty_label))
         self.main_layout.addWidget(self.empty_label)
 
         self.main_layout.setStretch(self.layout().count() - 1, 1)
@@ -154,7 +154,8 @@ class DeviceExplorerWidget(QWidget):
                 MessageData(
                     title='Devices',
                     timeout=15000,
-                    body="<span style='color: red; font-weight: 600'> %s </span>" % error
+                    body=str(error),
+                    message_type=MessageType.ERROR_MESSAGE,
                 )
             )
         if not devices:

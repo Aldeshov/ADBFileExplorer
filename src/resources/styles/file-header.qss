@@ -1,0 +1,5 @@
+QWidget {
+    background-color: palette(AlternateBase);
+    font-weight: 500;
+    border: 1px solid palette(Mid);
+}

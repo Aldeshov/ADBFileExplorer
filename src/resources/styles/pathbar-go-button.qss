@@ -1,0 +1,3 @@
+QToolButton {
+    padding: 4px;
+}

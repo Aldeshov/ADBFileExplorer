@@ -1,0 +1,47 @@
+QWidget#notification {
+    background-color: palette(Base);
+}
+
+QWidget#notification[variant="message"] {
+    border-left: 3px solid palette(Light);
+}
+
+QWidget#notification[variant="loading"] {
+    border-left: 3px solid palette(Dark);
+}
+
+QWidget#notification[variant="error"] {
+    border-left: 3px solid orangered;
+}
+
+QWidget#notification QLabel#title {
+    color: palette(WindowText);
+    font-size: 16px;
+    font-weight: bold;
+    padding-left: 4px;
+}
+
+QWidget#notification[variant="error"] QLabel#title {
+    color: orangered;
+}
+
+QWidget#notification QLabel#body {
+    color: palette(WindowText);
+    padding-left: 4px;
+}
+
+QPushButton#close {
+    background-color: palette(Base);
+    color: palette(WindowText);
+    font-size: 16px;
+    border: none;
+}
+
+QPushButton#close:hover {
+    background-color: palette(Highlight);
+    border: none;
+}
+
+QPushButton#close:pressed {
+    background-color: palette(Dark);
+}

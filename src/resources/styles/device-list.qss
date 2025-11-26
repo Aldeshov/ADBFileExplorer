@@ -1,17 +1,17 @@
 QListView {
     outline: 0;
-    background-color: #F0F0F0;
+    background-color: palette(Base);
 }
 
 QListView::item{
-    background-color: #E6E6E6;
+    background-color: palette(AlternateBase);
 }
 
 QListView::item:hover{
-    background-color: #D6D6D6;
+    background-color: palette(Midlight);
 }
 
 QListView::item:active:selected{
-    color: black;
-    background-color: #C1C1C1;
+    color: palette(HighlightedText);
+    background-color: palette(Highlight);
 }

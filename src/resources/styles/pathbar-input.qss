@@ -1,0 +1,3 @@
+QLineEdit {
+    padding: 5px;
+}

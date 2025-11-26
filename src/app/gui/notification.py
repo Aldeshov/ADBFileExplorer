@@ -4,7 +4,7 @@ from typing import Union
 
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtCore import Qt, QTimer, QPoint, QSize, QPropertyAnimation, QAbstractAnimation, QObject
-from PyQt5.QtGui import QIcon, QPaintEvent, QPainter, QMovie
+from PyQt5.QtGui import QPaintEvent, QPainter, QMovie
 from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QStyleOption, QStyle, \
     QGraphicsDropShadowEffect, QVBoxLayout, QScrollArea, QSizePolicy, QFrame, QGraphicsOpacityEffect, QProgressBar
 
@@ -16,6 +16,10 @@ from app.helpers.tools import read_string_from_file
 class BaseMessage(QWidget):
     def __init__(self, parent: QObject):
         super(BaseMessage, self).__init__(parent)
+        # Object name to scope QSS to the root notification only
+        self.setObjectName("notification")
+        # Ensure style backgrounds are painted for this widget
+        self.setAttribute(Qt.WA_StyledBackground, True)
         self.notification_center = parent
         self.header = QHBoxLayout()
         self.body = QVBoxLayout(self)
@@ -33,7 +37,7 @@ class BaseMessage(QWidget):
         self.animation.setStartValue(0)
         self.animation.setEndValue(1)
 
-        self.setStyleSheet('QWidget { background: #d3d7cf; }')
+        self.setStyleSheet(read_string_from_file(Resources.style_notification))
         self.setAttribute(Qt.WA_DeleteOnClose)
         self.setMinimumSize(self.sizeHint())
         self.setMinimumHeight(80)
@@ -79,18 +83,16 @@ class BaseMessage(QWidget):
 
     def create_title(self, text):
         title = QLabel(text, self)
+        title.setObjectName("title")
         title.setAlignment(Qt.AlignVCenter)
-        title.setStyleSheet("QLabel { font-size: 16px; font-weight: bold; }")
         title.setContentsMargins(5, 0, 0, 0)
         self.header.addWidget(title, 1)
 
     def create_close(self):
         button = QPushButton(self)
         button.setObjectName("close")
-        button.setIcon(QIcon(Resources.icon_close))
+        button.setText('×')
         button.setFixedSize(32, 32)
-        button.setIconSize(QSize(10, 10))
-        button.setStyleSheet(read_string_from_file(Resources.style_notification_button))
         button.clicked.connect(lambda: self.close() or None)
         self.header.addWidget(button)
 
@@ -100,9 +102,9 @@ class BaseMessage(QWidget):
 
     def default_body_message(self, message):
         body = QLabel(message, self)
+        body.setObjectName("body")
         body.setWordWrap(True)
         body.setContentsMargins(15, 5, 20, 10)
-        body.setStyleSheet("font-size: 14px; font-weight: normal;")
         return body
 
 
@@ -182,7 +184,7 @@ class NotificationCenter(QScrollArea):
         self.setWidget(self.notifications)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.SubWindow)
-        self.setStyleSheet("QWidget { background: transparent; border: 0; }")
+        self.setStyleSheet(read_string_from_file(Resources.style_notification_center))
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self.verticalScrollBar().rangeChanged.connect(lambda x, y: self.verticalScrollBar().setValue(y))
 
@@ -213,15 +215,26 @@ class NotificationCenter(QScrollArea):
         self.setGeometry(geometry)
         self.setMaximumHeight(self.parent().rect().height())
 
-    def append_notification(self, title: str, body: Union[QWidget, str], timeout=0, message_type=MessageType.MESSAGE):
-        if message_type == MessageType.MESSAGE:
-            message = Message(self, title, body, timeout)
-            self.append(message)
-            return message
-        elif message_type == MessageType.LOADING_MESSAGE:
+    def append_notification(self, title: str, body: Union[QWidget, str], timeout=0, message_type=MessageType.INFO_MESSAGE):
+        if message_type == MessageType.LOADING_MESSAGE:
             message = LoadingMessage(self, title, body)
-            self.append(message)
-            return message
+            variant = 'loading'
+        elif message_type == MessageType.ERROR_MESSAGE:
+            message = Message(self, title, body, timeout)
+            variant = 'error'
+        else:
+            message = Message(self, title, body, timeout)
+            variant = 'message'
+
+        # Apply variant for QSS styling without hardcoded colors
+        message.setProperty('variant', variant)
+        # Repolish to apply dynamic property styling
+        style = message.style()
+        style.unpolish(message)
+        style.polish(message)
+
+        self.append(message)
+        return message
 
     def append(self, message: BaseMessage):
         self.notifications.layout().addWidget(message)

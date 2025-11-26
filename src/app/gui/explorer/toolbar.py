@@ -9,7 +9,7 @@ from app.core.main import Adb
 from app.core.managers import Global
 from app.data.models import MessageData, MessageType
 from app.data.repositories import FileRepository
-from app.helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper
+from app.helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper, read_string_from_file
 
 
 class UploadTools(QToolButton):
@@ -59,7 +59,8 @@ class UploadTools(QToolButton):
                     MessageData(
                         timeout=15000,
                         title="Creating folder",
-                        body="<span style='color: red; font-weight: 600'> %s </span>" % error,
+                        body=str(error),
+                        message_type=MessageType.ERROR_MESSAGE,
                     )
                 )
             if data:
@@ -109,7 +110,8 @@ class UploadTools(QToolButton):
                     MessageData(
                         timeout=15000,
                         title='Upload error',
-                        body="<span style='color: red; font-weight: 600'> %s </span>" % error,
+                        body=str(error),
+                        message_type=MessageType.ERROR_MESSAGE,
                     )
                 )
             if data:
@@ -143,14 +145,14 @@ class PathBar(QWidget):
 
         self.text = QLineEdit(self)
         self.text.installEventFilter(self)
-        self.text.setStyleSheet("padding: 5;")
+        self.text.setStyleSheet(read_string_from_file(Resources.style_pathbar_input))
         self.text.setText(self.prefix + self.value)
         self.text.textEdited.connect(self._update)
         self.text.returnPressed.connect(self._action)
         self.layout().addWidget(self.text)
 
         self.go = QToolButton(self)
-        self.go.setStyleSheet("padding: 4;")
+        self.go.setStyleSheet(read_string_from_file(Resources.style_pathbar_go_button))
         self.action = QAction(QIcon(Resources.icon_arrow), 'Go', self)
         self.action.triggered.connect(self._action)
         self.go.setDefaultAction(self.action)
@@ -182,7 +184,8 @@ class PathBar(QWidget):
                 MessageData(
                     timeout=10000,
                     title="Opening folder",
-                    body="<span style='color: red; font-weight: 600'> %s </span>" % error,
+                    body=str(error),
+                    message_type=MessageType.ERROR_MESSAGE,
                 )
             )
         elif file and Adb.manager().go(file):
@@ -193,6 +196,7 @@ class PathBar(QWidget):
                 MessageData(
                     timeout=10000,
                     title="Opening folder",
-                    body="<span style='color: red; font-weight: 600'> Cannot open location </span>",
+                    body="Cannot open location",
+                    message_type=MessageType.ERROR_MESSAGE,
                 )
             )

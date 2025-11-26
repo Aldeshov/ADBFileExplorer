@@ -110,7 +110,8 @@ class MenuBar(QMenuBar):
                 MessageData(
                     timeout=15000,
                     title="Disconnect",
-                    body="<span style='color: red; font-weight: 600'></span>" % error
+                    body=str(error),
+                    message_type=MessageType.ERROR_MESSAGE,
                 )
             )
         Global().communicate.status_bar.emit('Operation: Disconnecting finished.', 3000)
@@ -129,7 +130,8 @@ class MenuBar(QMenuBar):
                 MessageData(
                     timeout=15000,
                     title="Connect to device",
-                    body="<span style='color: red; font-weight: 600'>%s</span>" % error
+                    body=str(error),
+                    message_type=MessageType.ERROR_MESSAGE,
                 )
             )
         Global().communicate.status_bar.emit('Operation: Connecting to device finished.', 3000)
@@ -161,7 +163,7 @@ class MainWindow(QMainWindow):
         welcome_title = "Welcome to ADBFileExplorer!"
         welcome_body = "Here you can see the list of your connected adb devices. Click one of them to see files.<br/>"\
                        "Current selected core: <strong>%s</strong><br/>" \
-                       "To change it - <code style='color: blue'>settings.json</code> file" % Settings.adb_core()
+                       "To change it - <code style='color: lightslategray'>settings.json</code> file" % Settings.adb_core()
 
         Global().communicate.status_bar.emit('Ready', 5000)
         Global().communicate.notification.emit(MessageData(title=welcome_title, body=welcome_body, timeout=30000))

@@ -87,15 +87,20 @@ class Settings(metaclass=Singleton):
 class Resources:
     __metaclass__ = Singleton
 
-    style_window = resource_filename('resources.styles', 'window.qss')
     style_file_list = resource_filename('resources.styles', 'file-list.qss')
     style_device_list = resource_filename('resources.styles', 'device-list.qss')
-    style_notification_button = resource_filename('resources.styles', 'notification-button.qss')
+
+    style_notification = resource_filename('resources.styles', 'notification.qss')
+    style_file_header = resource_filename('resources.styles', 'file-header.qss')
+    style_empty_label = resource_filename('resources.styles', 'empty-label.qss')
+    style_properties_dialog = resource_filename('resources.styles', 'properties-dialog.qss')
+    style_notification_center = resource_filename('resources.styles', 'notification-center.qss')
+    style_pathbar_input = resource_filename('resources.styles', 'pathbar-input.qss')
+    style_pathbar_go_button = resource_filename('resources.styles', 'pathbar-go-button.qss')
 
     icon_logo = resource_filename('resources.icons', 'logo.svg')
     icon_link = resource_filename('resources.icons', 'link.svg')
     icon_no_link = resource_filename('resources.icons', 'no_link.svg')
-    icon_close = resource_filename('resources.icons', 'close.svg')
     icon_phone = resource_filename('resources.icons', 'phone.svg')
     icon_phone_unknown = resource_filename('resources.icons', 'phone_unknown.svg')
     icon_plus = resource_filename('resources.icons', 'plus.svg')

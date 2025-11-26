@@ -142,10 +142,11 @@ class MessageData:
         self.timeout = kwargs.get("timeout") or 0
         self.title = kwargs.get("title") or "Message"
         self.body = kwargs.get("body")
-        self.message_type = kwargs.get("message_type") or MessageType.MESSAGE
+        self.message_type = kwargs.get("message_type") or MessageType.INFO_MESSAGE
         self.message_catcher = kwargs.get("message_catcher") or None
 
 
 class MessageType:
-    MESSAGE = 1
+    INFO_MESSAGE = 1
     LOADING_MESSAGE = 2
+    ERROR_MESSAGE = 3

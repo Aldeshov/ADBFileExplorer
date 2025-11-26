@@ -1,0 +1,3 @@
+QWidget {
+    background-color: palette(Base);
+}

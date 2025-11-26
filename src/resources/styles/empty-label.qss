@@ -1,0 +1,4 @@
+QLabel {
+    color: palette(Dark);
+    border: 1px solid palette(Mid);
+}
