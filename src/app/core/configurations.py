@@ -17,7 +17,7 @@ class Application(metaclass=Singleton):
     def __init__(self):
         print('─────────────────────────────────')
         print('ADB File Explorer v%s' % self.__version__)
-        print('Copyright (C) 2022 %s' % self.__author__)
+        print('Copyright (C) 2025 %s' % self.__author__)
         print('─────────────────────────────────')
         print('Platform %s' % platform.platform())
 
@@ -58,9 +58,9 @@ class Settings(metaclass=Singleton):
     @classmethod
     def adb_core(cls):
         cls.initialize()
-        if 'adb_core' in cls.data and cls.data['adb_core'] == 'external':
-            return 'external'
-        return 'python'
+        if 'adb_core' in cls.data and cls.data['adb_core'] == 'python':
+            return 'python'
+        return 'external'
 
     @classmethod
     def adb_run_as_root(cls):
