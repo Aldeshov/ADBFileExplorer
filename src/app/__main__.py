@@ -28,11 +28,10 @@ if __name__ == '__main__':
 
     app.setStyle('Fusion')
 
-    # Force the light theme - just reset any dark styling
+    # Force the light theme - just reset any dark styling, use if current theme is not correct
     # app.setPalette(app.style().standardPalette())
 
     font = app.font()
-    font.setPointSize(14)
     app.setFont(font)
 
     window = MainWindow()

@@ -5,15 +5,21 @@ import logging
 import os
 import shutil
 import subprocess
+import shlex
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QThread, QObject, QFile, QIODevice, QTextStream
 from PyQt5.QtWidgets import QWidget
-from adb_shell.auth.keygen import keygen
-from adb_shell.auth.sign_pythonrsa import PythonRSASigner
 
 from app.data.models import MessageData
+from typing import Dict, List
 
+try:
+    from adb_shell.auth.keygen import keygen
+    from adb_shell.auth.sign_pythonrsa import PythonRSASigner
+except ImportError:
+    keygen = None
+    PythonRSASigner = None
 
 class CommonProcess:
     """
@@ -126,7 +132,52 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-def get_python_rsa_keys_signer(rerun=True) -> PythonRSASigner:
+# ------------------------------
+# Symlink directory check helpers
+# ------------------------------
+def build_test_d_batch_script(paths: List[str]) -> str:
+    """
+    Build a portable shell snippet that tests each provided path with `test -d` and
+    prints a tokenized result for robust parsing.
+
+    Output per path:
+      DIR:<path>  when test -d succeeds
+      FILE:<path> when test -d fails
+
+    Paths are individually shell-quoted to safely handle spaces, quotes, parentheses, etc.
+    """
+    if not paths:
+        return "echo"  # no-op script
+    quoted = " ".join(shlex.quote(p) for p in paths)
+    script = (
+        "for p in " + quoted + "; do "
+        "if test -d \"$p\"; then echo DIR:$p; else echo FILE:$p; fi; "
+        "done"
+    )
+    return script
+
+
+def parse_test_d_batch_output(output: str) -> Dict[str, bool]:
+    """
+    Parse the output of `build_test_d_batch_script`.
+
+    Returns a mapping path -> is_dir (True if directory, False otherwise).
+    """
+    status: Dict[str, bool] = {}
+    if not output:
+        return status
+    for line in output.splitlines():
+        if line.startswith('DIR:'):
+            status[line[4:]] = True
+        elif line.startswith('FILE:'):
+            status[line[5:]] = False
+    return status
+
+
+def get_python_rsa_keys_signer(rerun=True):
+    if keygen is None or PythonRSASigner is None:
+        return None
+
     privkey = os.path.expanduser('~/.android/adbkey')
     if os.path.isfile(privkey):
         with open(privkey) as f:
@@ -147,6 +198,7 @@ def get_python_rsa_keys_signer(rerun=True) -> PythonRSASigner:
             os.mkdir(path)
         keygen(privkey)
         return get_python_rsa_keys_signer(False)
+    return None
 
 
 def read_string_from_file(path: str):

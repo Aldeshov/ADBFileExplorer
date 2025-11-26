@@ -4,11 +4,15 @@ import logging
 import posixpath
 
 from PyQt5.QtCore import QObject
-from adb_shell.adb_device import AdbDeviceTcp, AdbDeviceUsb
 
 from app.data.models import File, Device
 from app.helpers.tools import Communicate, Singleton, get_python_rsa_keys_signer, AsyncRepositoryWorker
 
+try:
+    from adb_shell.adb_device import AdbDeviceTcp, AdbDeviceUsb
+except ImportError:
+    AdbDeviceTcp = None
+    AdbDeviceUsb = None
 
 class ADBManager:
     __metaclass__ = Singleton
@@ -72,7 +76,10 @@ class PythonADBManager(ADBManager):
     device = None
 
     @classmethod
-    def connect(cls, device_id: str) -> str:
+    def connect(cls, device_id: str):
+        if AdbDeviceTcp is None or AdbDeviceUsb is None:
+            return None
+
         if device_id.__contains__('.'):
             port = 5555
             host = device_id

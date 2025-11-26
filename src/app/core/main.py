@@ -3,12 +3,17 @@
 import sys
 from typing import Union
 
-import adb_shell
-
 from app.core.configurations import Settings
 from app.core.managers import PythonADBManager, ADBManager, WorkersManager
 from app.helpers.tools import Singleton
 from app.services import adb
+
+
+# Optional libs
+try:
+    import adb_shell
+except ImportError:
+    adb_shell = None
 
 
 class Adb(metaclass=Singleton):
@@ -23,7 +28,10 @@ class Adb(metaclass=Singleton):
             if adb.kill_server().IsSuccessful:
                 print("adb server stopped.")
 
-            print('Using Python "adb-shell" version %s' % adb_shell.__version__)
+            if adb_shell is not None:
+                print('Using Python "adb-shell" version %s' % adb_shell.__version__)
+            else:
+                print('Python "adb-shell" is not installed. Install it with "pip install adb-shell"')
 
         elif cls.core == cls.EXTERNAL_TOOL_ADB and adb.validate():
             print(adb.version().OutputData)

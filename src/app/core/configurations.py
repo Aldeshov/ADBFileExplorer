@@ -115,5 +115,3 @@ class Resources:
     icon_files_upload = resource_filename('resources.icons.files.actions', 'files_upload.svg')
     icon_folder_upload = resource_filename('resources.icons.files.actions', 'folder_upload.svg')
     icon_folder_create = resource_filename('resources.icons.files.actions', 'folder_create.svg')
-
-    anim_loading = resource_filename('resources.anim', 'loading.gif')

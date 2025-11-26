@@ -3,14 +3,15 @@
 from typing import Union
 
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtCore import Qt, QTimer, QPoint, QSize, QPropertyAnimation, QAbstractAnimation, QObject
-from PyQt5.QtGui import QPaintEvent, QPainter, QMovie
+from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QAbstractAnimation, QObject
+from PyQt5.QtGui import QPaintEvent, QPainter
 from PyQt5.QtWidgets import QLabel, QWidget, QHBoxLayout, QPushButton, QStyleOption, QStyle, \
     QGraphicsDropShadowEffect, QVBoxLayout, QScrollArea, QSizePolicy, QFrame, QGraphicsOpacityEffect, QProgressBar
 
 from app.core.configurations import Resources
 from app.data.models import MessageType
 from app.helpers.tools import read_string_from_file
+from app.gui.widgets.circular_progress import CircularProgress
 
 
 class BaseMessage(QWidget):
@@ -71,15 +72,10 @@ class BaseMessage(QWidget):
         return event.accept()
 
     def create_loading(self):
-        gif = QLabel(self)
-        movie = QMovie(Resources.anim_loading)
-        movie.setScaledSize(QSize(24, 24))
-        gif.setContentsMargins(5, 0, 5, 0)
-        gif.setAlignment(Qt.AlignCenter)
-        gif.setMovie(movie)
-
-        self.header.addWidget(gif)
-        movie.start()
+        self._loading_spinner = CircularProgress(size=24, thickness=2, parent=self)
+        self._loading_spinner.setContentsMargins(5, 0, 0, 0)
+        self.header.addWidget(self._loading_spinner)
+        self._loading_spinner.start()
 
     def create_title(self, text):
         title = QLabel(text, self)

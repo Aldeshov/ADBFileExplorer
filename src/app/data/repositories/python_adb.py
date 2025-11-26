@@ -6,14 +6,17 @@ import os
 import shlex
 from typing import List
 
-from usb1 import USBContext
-
 from app.core.configurations import Settings
 from app.core.managers import PythonADBManager
 from app.data.models import Device, File, FileType
 from app.helpers.converters import __converter_to_permissions_default__
 from app.services.adb import ShellCommand
+from app.helpers.tools import build_test_d_batch_script, parse_test_d_batch_output
 
+try:
+    from usb1 import USBContext
+except ImportError:
+    USBContext = None
 
 class FileRepository:
     @classmethod
@@ -33,13 +36,13 @@ class FileRepository:
             )
 
             if file.type == FileType.LINK:
-                args = ShellCommand.LS_LIST_DIRS + [path.replace(' ', r'\ ') + '/']
-                response = PythonADBManager.device.shell(shlex.join(args))
+                # Use a portable single-path batch script to detect if link points to a directory
+                script = build_test_d_batch_script([path])
+                response = PythonADBManager.device.shell(shlex.join(['sh', '-c', script]))
+                status = parse_test_d_batch_output(response or '')
                 file.link_type = FileType.UNKNOWN
-                if response and response.startswith('d'):
-                    file.link_type = FileType.DIRECTORY
-                elif response and response.__contains__('Not a'):
-                    file.link_type = FileType.FILE
+                if path in status:
+                    file.link_type = FileType.DIRECTORY if status[path] else FileType.FILE
             file.path = path
             return file, None
 
@@ -59,8 +62,7 @@ class FileRepository:
             path = PythonADBManager.path()
             response = PythonADBManager.device.list(path)
 
-            args = ShellCommand.LS_ALL_DIRS + [path.replace(' ', r'\ ') + "*/"]
-            dirs = PythonADBManager.device.shell(" ".join(args)).split()
+            symlink_paths: List[str] = []
 
             for file in response:
                 if file.filename.decode() == '.' or file.filename.decode() == '..':
@@ -69,9 +71,8 @@ class FileRepository:
                 permissions = __converter_to_permissions_default__(list(oct(file.mode)[2:]))
                 link_type = None
                 if permissions[0] == 'l':
-                    link_type = FileType.FILE
-                    if dirs.__contains__(path + file.filename.decode() + "/"):
-                        link_type = FileType.DIRECTORY
+                    # Defer to a batched single shell call below
+                    symlink_paths.append(path + file.filename.decode())
 
                 files.append(
                     File(
@@ -83,6 +84,20 @@ class FileRepository:
                         permissions=permissions,
                     )
                 )
+
+            # Batch resolve all symlink targets with one shell call
+            if symlink_paths:
+                try:
+                    script = build_test_d_batch_script(symlink_paths)
+                    output = PythonADBManager.device.shell(shlex.join(['sh', '-c', script]))
+                    status = parse_test_d_batch_output(output or '')
+                    for f in files:
+                        if f.permissions and f.permissions[0] == 'l':
+                            if f.path in status:
+                                f.link_type = FileType.DIRECTORY if status[f.path] else FileType.FILE
+                except BaseException:
+                    # On any failure, we keep link_type as is (None) or previously set
+                    pass
 
             return files, None
 
@@ -116,7 +131,7 @@ class FileRepository:
         if not PythonADBManager.device.available:
             return None, "Device not available!"
         try:
-            args = [ShellCommand.CAT, file.path.replace(' ', r'\ ')]
+            args = [ShellCommand.CAT, file.path]
             if file.isdir:
                 return None, "Can't open. %s is a directory" % file.path
             response = PythonADBManager.device.shell(shlex.join(args))
@@ -214,6 +229,9 @@ class FileRepository:
 class DeviceRepository:
     @classmethod
     def devices(cls) -> (List[Device], str):
+        if USBContext is None:
+            return [], 'USB library not found, install it with "pip install libusb1"'
+
         if PythonADBManager.device:
             PythonADBManager.device.close()
 

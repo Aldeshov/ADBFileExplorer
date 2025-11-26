@@ -29,21 +29,26 @@ Files
 sudo apt-get install python3-pip python3-pyqt5  # For Linux Ubuntu
 pip install PyQt5 libusb1 adb-shell
 ```
+
+!!! Note
+`libusb1` & `adb-shell` are optional dependencies if you are going to use only `adb` executable.
+You can skip them (they require other dependencies like libusb for Linux/Mac, etc...), 
+
 * `adb` (binary) should exist in project root folder or in `$PATH`
 
 ## Launch
 
 1. Clone the repo
-2. cd ADBFileExplorer
-3. create virtual environment by running `python -m venv venv`
-4. activate virtual environment by running `. venv/bin/activate`
-5. install requirements by running `pip install -r requirements.txt`
+2. `cd ADBFileExplorer`
+3. Create virtual environment by running `python -m venv venv`
+4. Activate virtual environment by running `venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Linux, Mac)
+5. Install requirements by running `pip install -r requirements.txt` (for full installation) or `pip install PyQt5` (for minimal installation)
 6. Edit [settings.json](src%2Fapp%2Fsettings.json) from the project root if necessary. `src/app/settings.json`
 
 ```json5
 {
   "adb_path": "adb",
-//  "adb_core": "external",
+//  "adb_core": "external", -> "python" | "external"
   "adb_kill_server_at_exit": false,
   "preserve_timestamp": true,
   "adb_run_as_root": false
@@ -52,14 +57,6 @@ pip install PyQt5 libusb1 adb-shell
 
 + `adb_path` - Full adb path or just 'adb' if the executable is in `$PATH`
 + `adb_core` - Set to 'external' to use external `adb` executable, otherwise the app will use `adb-shell`
-
-
-
-
-## Attention
-
-Application uses by default `adb-shell`. There may be problems with listing, pushing, or pulling files using `adb-shell`.
-For a better experience, try adding `"adb_core": "external"` to `settings.json`.
 
 ## License
 

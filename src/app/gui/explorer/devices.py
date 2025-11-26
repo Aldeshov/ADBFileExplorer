@@ -3,8 +3,8 @@
 from typing import Any
 
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtCore import Qt, QAbstractListModel, QModelIndex, QRect, QVariant, QSize
-from PyQt5.QtGui import QPalette, QPixmap, QMovie
+from PyQt5.QtCore import Qt, QAbstractListModel, QModelIndex, QRect, QVariant
+from PyQt5.QtGui import QPalette, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QStyledItemDelegate, QStyleOptionViewItem, QApplication, \
     QStyle, QListView
 
@@ -14,6 +14,7 @@ from app.core.managers import Global
 from app.data.models import DeviceType, MessageData, MessageType
 from app.data.repositories import DeviceRepository
 from app.helpers.tools import AsyncRepositoryWorker, read_string_from_file
+from app.gui.widgets.circular_progress import CircularProgress
 
 
 class DeviceItemDelegate(QStyledItemDelegate):
@@ -103,12 +104,9 @@ class DeviceExplorerWidget(QWidget):
         self.list.setStyleSheet(read_string_from_file(Resources.style_device_list))
         self.main_layout.addWidget(self.list)
 
-        self.loading = QLabel(self)
-        self.loading.setAlignment(Qt.AlignCenter)
-        self.loading_movie = QMovie(Resources.anim_loading, parent=self.loading)
-        self.loading_movie.setScaledSize(QSize(48, 48))
-        self.loading.setMovie(self.loading_movie)
-        self.main_layout.addWidget(self.loading)
+        self.loading = CircularProgress(size=48, thickness=3, parent=self)
+        self.loading.setVisible(False)
+        self.main_layout.addWidget(self.loading, alignment=Qt.AlignCenter)
 
         self.empty_label = QLabel("No connected devices", self)
         self.empty_label.setAlignment(Qt.AlignTop)
@@ -135,7 +133,7 @@ class DeviceExplorerWidget(QWidget):
             self.list.setHidden(True)
             self.loading.setHidden(False)
             self.empty_label.setHidden(True)
-            self.loading_movie.start()
+            self.loading.start()
 
             # Then start async worker
             worker.start()
@@ -146,7 +144,7 @@ class DeviceExplorerWidget(QWidget):
             return self.model.items[self.list.currentIndex().row()]
 
     def _async_response(self, devices, error):
-        self.loading_movie.stop()
+        self.loading.stop()
         self.loading.setHidden(True)
 
         if error:

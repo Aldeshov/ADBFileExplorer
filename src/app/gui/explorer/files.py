@@ -5,7 +5,7 @@ from typing import Any
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt, QPoint, QModelIndex, QAbstractListModel, QVariant, QRect, QSize, QEvent, QObject
-from PyQt5.QtGui import QPixmap, QColor, QPalette, QMovie, QKeySequence
+from PyQt5.QtGui import QPixmap, QColor, QPalette, QKeySequence
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QStyle, QWidget, QStyledItemDelegate, \
     QStyleOptionViewItem, QApplication, QListView, QVBoxLayout, QLabel, QSizePolicy, QHBoxLayout, QTextEdit, \
     QMainWindow
@@ -17,6 +17,7 @@ from app.data.models import FileType, MessageData, MessageType
 from app.data.repositories import FileRepository
 from app.gui.explorer.toolbar import ParentButton, UploadTools, PathBar
 from app.helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper, read_string_from_file
+from app.gui.widgets.circular_progress import CircularProgress
 
 
 class FileHeaderWidget(QWidget):
@@ -244,12 +245,9 @@ class FileExplorerWidget(QWidget):
         self.list.setSelectionMode(QListView.SelectionMode.ExtendedSelection)
         self.layout().addWidget(self.list)
 
-        self.loading = QLabel(self)
-        self.loading.setAlignment(Qt.AlignCenter)
-        self.loading_movie = QMovie(Resources.anim_loading, parent=self.loading)
-        self.loading_movie.setScaledSize(QSize(48, 48))
-        self.loading.setMovie(self.loading_movie)
-        self.main_layout.addWidget(self.loading)
+        self.loading = CircularProgress(size=48, thickness=3, parent=self)
+        self.loading.setVisible(False)
+        self.main_layout.addWidget(self.loading, alignment=Qt.AlignCenter)
 
         self.empty_label = QLabel("Folder is empty", self)
         self.empty_label.setAlignment(Qt.AlignCenter)
@@ -289,7 +287,7 @@ class FileExplorerWidget(QWidget):
             self.list.setHidden(True)
             self.loading.setHidden(False)
             self.empty_label.setHidden(True)
-            self.loading_movie.start()
+            self.loading.start()
 
             # Then start async worker
             worker.start()
@@ -300,7 +298,7 @@ class FileExplorerWidget(QWidget):
         return super(FileExplorerWidget, self).close()
 
     def _async_response(self, files: list, error: str):
-        self.loading_movie.stop()
+        self.loading.stop()
         self.loading.setHidden(True)
 
         if error:
