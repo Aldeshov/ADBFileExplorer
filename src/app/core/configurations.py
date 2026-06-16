@@ -4,7 +4,7 @@ import os
 import platform
 
 from PyQt5.QtCore import QFile, QIODevice
-from pkg_resources import resource_filename
+from importlib.resources import files
 
 from app.data.models import Device
 from app.helpers.tools import Singleton, json_to_dict
@@ -24,7 +24,7 @@ class Application(metaclass=Singleton):
 
 class Settings(metaclass=Singleton):
     downloads_path = os.path.join(os.path.expanduser('~'), 'Downloads')
-    filename = resource_filename('app', 'settings.json')
+    filename = str(files('app').joinpath('settings.json'))
     data = None
 
     @classmethod
@@ -87,31 +87,31 @@ class Settings(metaclass=Singleton):
 class Resources:
     __metaclass__ = Singleton
 
-    style_file_list = resource_filename('resources.styles', 'file-list.qss')
-    style_device_list = resource_filename('resources.styles', 'device-list.qss')
+    style_file_list = str(files('resources.styles').joinpath('file-list.qss'))
+    style_device_list = str(files('resources.styles').joinpath('device-list.qss'))
 
-    style_notification = resource_filename('resources.styles', 'notification.qss')
-    style_file_header = resource_filename('resources.styles', 'file-header.qss')
-    style_empty_label = resource_filename('resources.styles', 'empty-label.qss')
-    style_properties_dialog = resource_filename('resources.styles', 'properties-dialog.qss')
-    style_notification_center = resource_filename('resources.styles', 'notification-center.qss')
-    style_pathbar_input = resource_filename('resources.styles', 'pathbar-input.qss')
-    style_pathbar_go_button = resource_filename('resources.styles', 'pathbar-go-button.qss')
+    style_notification = str(files('resources.styles').joinpath('notification.qss'))
+    style_file_header = str(files('resources.styles').joinpath('file-header.qss'))
+    style_empty_label = str(files('resources.styles').joinpath('empty-label.qss'))
+    style_properties_dialog = str(files('resources.styles').joinpath('properties-dialog.qss'))
+    style_notification_center = str(files('resources.styles').joinpath('notification-center.qss'))
+    style_pathbar_input = str(files('resources.styles').joinpath('pathbar-input.qss'))
+    style_pathbar_go_button = str(files('resources.styles').joinpath('pathbar-go-button.qss'))
 
-    icon_logo = resource_filename('resources.icons', 'logo.svg')
-    icon_link = resource_filename('resources.icons', 'link.svg')
-    icon_no_link = resource_filename('resources.icons', 'no_link.svg')
-    icon_phone = resource_filename('resources.icons', 'phone.svg')
-    icon_phone_unknown = resource_filename('resources.icons', 'phone_unknown.svg')
-    icon_plus = resource_filename('resources.icons', 'plus.svg')
-    icon_up = resource_filename('resources.icons', 'up.svg')
-    icon_arrow = resource_filename('resources.icons', 'arrow.svg')
-    icon_file = resource_filename('resources.icons.files', 'file.svg')
-    icon_folder = resource_filename('resources.icons.files', 'folder.svg')
-    icon_file_unknown = resource_filename('resources.icons.files', 'file_unknown.svg')
-    icon_link_file = resource_filename('resources.icons.files', 'link_file.svg')
-    icon_link_folder = resource_filename('resources.icons.files', 'link_folder.svg')
-    icon_link_file_unknown = resource_filename('resources.icons.files', 'link_file_unknown.svg')
-    icon_files_upload = resource_filename('resources.icons.files.actions', 'files_upload.svg')
-    icon_folder_upload = resource_filename('resources.icons.files.actions', 'folder_upload.svg')
-    icon_folder_create = resource_filename('resources.icons.files.actions', 'folder_create.svg')
+    icon_logo = str(files('resources.icons').joinpath('logo.svg'))
+    icon_link = str(files('resources.icons').joinpath('link.svg'))
+    icon_no_link = str(files('resources.icons').joinpath('no_link.svg'))
+    icon_phone = str(files('resources.icons').joinpath('phone.svg'))
+    icon_phone_unknown = str(files('resources.icons').joinpath('phone_unknown.svg'))
+    icon_plus = str(files('resources.icons').joinpath('plus.svg'))
+    icon_up = str(files('resources.icons').joinpath('up.svg'))
+    icon_arrow = str(files('resources.icons').joinpath('arrow.svg'))
+    icon_file = str(files('resources.icons.files').joinpath('file.svg'))
+    icon_folder = str(files('resources.icons.files').joinpath('folder.svg'))
+    icon_file_unknown = str(files('resources.icons.files').joinpath('file_unknown.svg'))
+    icon_link_file = str(files('resources.icons.files').joinpath('link_file.svg'))
+    icon_link_folder = str(files('resources.icons.files').joinpath('link_folder.svg'))
+    icon_link_file_unknown = str(files('resources.icons.files').joinpath('link_file_unknown.svg'))
+    icon_files_upload = str(files('resources.icons.files.actions').joinpath('files_upload.svg'))
+    icon_folder_upload = str(files('resources.icons.files.actions').joinpath('folder_upload.svg'))
+    icon_folder_create = str(files('resources.icons.files.actions').joinpath('folder_create.svg'))
