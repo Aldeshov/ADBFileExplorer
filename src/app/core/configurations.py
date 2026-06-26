@@ -4,10 +4,20 @@ import os
 import platform
 
 from PyQt5.QtCore import QFile, QIODevice
-from pkg_resources import resource_filename
+from importlib.resources import files as _resource_files
 
 from app.data.models import Device
 from app.helpers.tools import Singleton, json_to_dict
+
+
+def resource_filename(package: str, resource: str) -> str:
+    """Return a filesystem path to a resource bundled inside a package.
+
+    Standard-library replacement for ``pkg_resources.resource_filename``,
+    which is unavailable once setuptools 81+ drops the ``pkg_resources``
+    package. Uses ``importlib.resources`` (available since Python 3.9).
+    """
+    return str(_resource_files(package).joinpath(resource))
 
 
 class Application(metaclass=Singleton):
