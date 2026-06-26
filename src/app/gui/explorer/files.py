@@ -1,6 +1,7 @@
 # ADB File Explorer
 # Copyright (C) 2022  Azat Aldeshov
 import sys
+import webbrowser
 from typing import Any
 
 from PyQt5 import QtCore, QtGui
@@ -10,14 +11,15 @@ from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QStyle, QW
     QStyleOptionViewItem, QApplication, QListView, QVBoxLayout, QLabel, QSizePolicy, QHBoxLayout, QTextEdit, \
     QMainWindow
 
-from app.core.configurations import Resources
+from app.core.configurations import Resources, Settings
 from app.core.main import Adb
-from app.core.managers import Global
+from app.core.managers import Global, ADBManager
 from app.data.models import FileType, MessageData, MessageType
 from app.data.repositories import FileRepository
 from app.gui.explorer.toolbar import ParentButton, UploadTools, PathBar
 from app.helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper, read_string_from_file
 from app.gui.widgets.circular_progress import CircularProgress
+from app.services import stream_server
 
 
 class FileHeaderWidget(QWidget):
@@ -363,6 +365,15 @@ class FileExplorerWidget(QWidget):
         action_download_to.triggered.connect(self.download_to)
         menu.addAction(action_download_to)
 
+        if self.file and not self.file.isdir:
+            action_stream = QAction('Stream', self)
+            action_stream.triggered.connect(self.stream_file)
+            menu.addAction(action_stream)
+
+            action_copy_stream = QAction('Copy stream link', self)
+            action_copy_stream.triggered.connect(self.copy_stream_link)
+            menu.addAction(action_copy_stream)
+
         menu.addSeparator()
 
         action_properties = QAction('Properties', self)
@@ -469,6 +480,28 @@ class FileExplorerWidget(QWidget):
                 )
                 helper.setup(worker, worker.update_loading_widget)
                 worker.start()
+
+    def _get_stream_url(self):
+        """Start (or reuse) a stream server for the selected file and return the URL."""
+        device = ADBManager.get_device()
+        if not device:
+            raise RuntimeError("No device connected")
+        adb_path = Settings.adb_path()
+        return stream_server.start_stream(adb_path, device.id, self.file.path)
+
+    def stream_file(self):
+        try:
+            url = self._get_stream_url()
+            webbrowser.open(url)
+        except Exception as e:
+            print("Stream error: %s" % e, file=sys.stderr)
+
+    def copy_stream_link(self):
+        try:
+            url = self._get_stream_url()
+            QApplication.clipboard().setText(url)
+        except Exception as e:
+            print("Copy stream link error: %s" % e, file=sys.stderr)
 
     def file_properties(self):
         file, error = FileRepository.file(self.file.path)
