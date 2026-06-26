@@ -1,5 +1,7 @@
 # ADB File Explorer
 # Copyright (C) 2022  Azat Aldeshov
+import os
+import threading
 from typing import List
 
 from app.core.configurations import Settings
@@ -116,13 +118,53 @@ class FileRepository:
             elif data:
                 self.messages.append(data)
 
+    @staticmethod
+    def _remote_file_size(source: str) -> int:
+        try:
+            command = shlex.join(['stat', '-c', '%s', source])
+            response = adb.shell(ADBManager.get_device().id, [command])
+            if response.IsSuccessful and response.OutputData:
+                return int(response.OutputData.strip())
+        except (ValueError, AttributeError, TypeError):
+            pass
+        return 0
+
+    @staticmethod
+    def _poll_download_progress(dest_file, total, callback, name, stop_event):
+        # adb pull only prints `[ N%]` progress to a TTY; when its output is
+        # piped (as here) it stays silent until the transfer finishes, so the
+        # progress bar never moved. Derive progress from the size of the file
+        # being written locally instead.
+        while not stop_event.wait(0.25):
+            try:
+                current = os.path.getsize(dest_file)
+            except OSError:
+                continue
+            callback(name, min(int(current * 100 / total), 99))
+
     @classmethod
     def download(cls, progress_callback: callable, source: str, destination: str) -> (str, str):
         if not destination:
             destination = Settings.device_downloads_path(ADBManager.get_device())
         if ADBManager.get_device() and source and destination:
             helper = cls.UpDownHelper(progress_callback)
+
+            name = source.rstrip('/').rsplit('/', 1)[-1]
+            total = cls._remote_file_size(source)
+            dest_file = os.path.join(destination, name) if os.path.isdir(destination) else destination
+            stop_event = threading.Event()
+            if total > 0 and progress_callback:
+                threading.Thread(
+                    target=cls._poll_download_progress,
+                    args=(dest_file, total, progress_callback, name, stop_event),
+                    daemon=True,
+                ).start()
+
             response = adb.pull(ADBManager.get_device().id, source, destination, helper.call)
+            stop_event.set()
+            if response.IsSuccessful and total > 0 and progress_callback:
+                progress_callback(name, 100)
+
             if not response.IsSuccessful:
                 return None, response.ErrorData or "\n".join(helper.messages)
 
