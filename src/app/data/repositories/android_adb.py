@@ -37,6 +37,10 @@ class FileRepository:
         file.path = path
         return file, response.ErrorData
 
+    # Таймаут на листинг каталога (секунды).
+    # 25с — достаточно для большинства папок даже по Wi-Fi.
+    FILES_TIMEOUT = 25
+
     @classmethod
     def files(cls) -> (List[File], str):
         if not ADBManager.get_device():
@@ -44,9 +48,13 @@ class FileRepository:
 
         path = ADBManager.path()
         args = adb.ShellCommand.LS_ALL_LIST + [path]
-        response = adb.shell(ADBManager.get_device().id, [shlex.join(args)])
+        response = adb.shell(ADBManager.get_device().id, [shlex.join(args)],
+                             timeout=cls.FILES_TIMEOUT)
         if not response.IsSuccessful and response.ExitCode != 1:
-            return [], response.ErrorData or response.OutputData
+            err = response.ErrorData or response.OutputData or ''
+            # Понятное сообщение при таймауте/offline уже формируется в CommonProcess,
+            # просто пробрасываем его
+            return [], err
 
         if not response.OutputData:
             return [], response.ErrorData
@@ -65,7 +73,9 @@ class FileRepository:
             # Build one script to test all symlinks using shared helper; safely quotes each path
             script = build_test_d_batch_script(symlink_paths)
             cmd = shlex.join(['sh', '-c', script])
-            batch_resp = adb.shell(ADBManager.get_device().id, [cmd])
+            # Даём пропорциональный таймаут: не менее 10с
+            sym_timeout = max(10, min(len(symlink_paths) // 2, 20))
+            batch_resp = adb.shell(ADBManager.get_device().id, [cmd], timeout=sym_timeout)
             if batch_resp.IsSuccessful and batch_resp.OutputData:
                 status = parse_test_d_batch_output(batch_resp.OutputData)
 

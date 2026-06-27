@@ -1,5 +1,7 @@
 # ADB File Explorer
 # Copyright (C) 2022  Azat Aldeshov
+import os
+import subprocess
 from typing import Any
 
 from PyQt5 import QtGui, QtCore
@@ -15,6 +17,17 @@ from app.data.models import DeviceType, MessageData, MessageType
 from app.data.repositories import DeviceRepository, StorageRepository
 from app.helpers.tools import AsyncRepositoryWorker, read_string_from_file
 from app.gui.widgets.circular_progress import CircularProgress
+
+_TRANSPORT_SCRIPT = os.path.expanduser('~/PhoneAsExtStorage/adbfs-rootless/phone-transport.sh')
+
+
+def _devices_with_auto_connect():
+    """Обёртка для DeviceRepository.devices с авто-подключением по Wi-Fi-adb через phone-transport.sh."""
+    try:
+        subprocess.run(['bash', _TRANSPORT_SCRIPT], capture_output=True, timeout=6)
+    except Exception:
+        pass
+    return DeviceRepository.devices()
 
 
 class DeviceItemDelegate(QStyledItemDelegate):
@@ -123,7 +136,7 @@ class DeviceExplorerWidget(QWidget):
         worker = AsyncRepositoryWorker(
             name="Devices",
             worker_id=self.DEVICES_WORKER_ID,
-            repository_method=DeviceRepository.devices,
+            repository_method=_devices_with_auto_connect,
             arguments=(),
             response_callback=self._async_response
         )

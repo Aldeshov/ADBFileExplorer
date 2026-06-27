@@ -89,10 +89,12 @@ def push(device_id: str, source_path: str, destination_path: str, stdout_callbac
     return CommonProcess(arguments=args, stdout_callback=stdout_callback)
 
 
-def shell(device_id: str, args: list):
+def shell(device_id: str, args: list, timeout: int = None):
     if RUN_AS_ROOT:
-        return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.ROOT] + args)
-    return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.SHELL] + args)
+        return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.ROOT] + args,
+                             timeout=timeout)
+    return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, Parameter.SHELL] + args,
+                         timeout=timeout)
 
 
 def file_list(device_id: str, path: str):
@@ -109,8 +111,11 @@ def exec_out_head(device_id: str, path: str, nbytes: int = 131072) -> bytes:
     try:
         result = subprocess.run(
             [ADB_PATH, Parameter.DEVICE, device_id, 'exec-out', f"head -c {nbytes} '{path}'"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=15  # таймаут 15с — превью по Wi-Fi не должно висеть дольше
         )
         return result.stdout
+    except subprocess.TimeoutExpired:
+        return b''
     except Exception:
         return b''
