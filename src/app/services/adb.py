@@ -108,9 +108,11 @@ def read_file(device_id: str, path: str):
 def exec_out_head(device_id: str, path: str, nbytes: int = 131072) -> bytes:
     """Fetch first nbytes of a remote file via adb exec-out + head. Returns raw bytes."""
     import subprocess
+    import shlex as _shlex
     try:
         result = subprocess.run(
-            [ADB_PATH, Parameter.DEVICE, device_id, 'exec-out', f"head -c {nbytes} '{path}'"],
+            [ADB_PATH, Parameter.DEVICE, device_id, 'exec-out',
+             f"head -c {nbytes} {_shlex.quote(path)}"],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             timeout=15  # таймаут 15с — превью по Wi-Fi не должно висеть дольше
         )

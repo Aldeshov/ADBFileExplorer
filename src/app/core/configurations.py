@@ -1,5 +1,6 @@
 # ADB File Explorer
 # Copyright (C) 2022  Azat Aldeshov
+import logging
 import os
 import platform
 
@@ -82,6 +83,25 @@ class Settings(metaclass=Singleton):
                 os.mkdir(downloads_path)
             return downloads_path
         return Settings.downloads_path
+
+
+_logger = logging.getLogger(__name__)
+
+_PHONE_SCRIPTS_DIR = os.path.expanduser('~/PhoneAsExtStorage/adbfs-rootless')
+
+
+def _checked_script(name: str) -> str:
+    """Return expanded path; log a warning if the file does not exist."""
+    path = os.path.join(_PHONE_SCRIPTS_DIR, name)
+    if not os.path.exists(path):
+        _logger.warning("Script not found: %s", path)
+    return path
+
+
+class AppScripts:
+    """Centralised paths for helper shell scripts."""
+    STREAM_SCRIPT = _checked_script('phone-stream.sh')
+    TRANSPORT_SCRIPT = _checked_script('phone-transport.sh')
 
 
 class Resources:

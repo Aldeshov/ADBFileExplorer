@@ -25,7 +25,11 @@ def _get_file_size(adb_path: str, device_id: str, remote_path: str) -> int:
     """Return total byte size of the remote file via `stat -c %s`."""
     cmd = [adb_path, "-s", device_id, "shell", "stat", "-c", "%s",
            shlex.quote(remote_path)]
-    out = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT).strip()
+    try:
+        out = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT,
+                                      timeout=10).strip()
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("Timed out fetching file size for: %s" % remote_path)
     return int(out)
 
 

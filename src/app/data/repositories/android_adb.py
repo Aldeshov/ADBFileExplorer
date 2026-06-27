@@ -228,7 +228,8 @@ class StorageRepository:
     def get_device_model(device_id: str) -> str:
         """Return ro.product.model, e.g. 'Pixel 6'."""
         try:
-            response = adb.shell(device_id, [shlex.join(adb.ShellCommand.GETPROP_PRODUCT_MODEL)])
+            response = adb.shell(device_id, [shlex.join(adb.ShellCommand.GETPROP_PRODUCT_MODEL)],
+                                 timeout=5)
             if response.IsSuccessful and response.OutputData:
                 return response.OutputData.strip()
         except Exception:
@@ -245,7 +246,7 @@ class StorageRepository:
         for flag in ['-k', '']:
             try:
                 cmd_parts = ['df'] + ([flag] if flag else []) + [path]
-                response = adb.shell(device_id, [shlex.join(cmd_parts)])
+                response = adb.shell(device_id, [shlex.join(cmd_parts)], timeout=5)
                 if not response.IsSuccessful or not response.OutputData:
                     continue
                 lines = [l.strip() for l in response.OutputData.splitlines() if l.strip()]
@@ -280,7 +281,7 @@ class StorageRepository:
         """Return /storage/XXXX-XXXX path if external SD card is present, else empty string."""
         import re
         try:
-            response = adb.shell(device_id, [shlex.join(['ls', '/storage/'])])
+            response = adb.shell(device_id, [shlex.join(['ls', '/storage/'])], timeout=5)
             if response.IsSuccessful and response.OutputData:
                 for entry in response.OutputData.split():
                     if re.match(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$', entry.strip()):

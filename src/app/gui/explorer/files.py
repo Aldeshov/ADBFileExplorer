@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QStyle, QW
     QStyleOptionViewItem, QApplication, QListView, QVBoxLayout, QLabel, QSizePolicy, QHBoxLayout, QTextEdit, \
     QMainWindow
 
-from app.core.configurations import Resources, Settings
+from app.core.configurations import AppScripts, Resources, Settings
 from app.core.main import Adb
 from app.core.managers import Global, ADBManager
 from app.data.models import FileType, MessageData, MessageType
@@ -184,6 +184,9 @@ class FileListModel(QAbstractListModel):
         self.endResetModel()
 
     def _on_thumbnail_ready(self, path: str, jpeg: bytes):
+        # Discard stale results after folder change
+        if path not in self._thumb_pending:
+            return
         pixmap = QPixmap()
         pixmap.loadFromData(jpeg)
         if not pixmap.isNull():
@@ -262,7 +265,7 @@ class FileListModel(QAbstractListModel):
         return QVariant()
 
 
-_TRANSPORT_SCRIPT = os.path.expanduser('~/PhoneAsExtStorage/adbfs-rootless/phone-transport.sh')
+_TRANSPORT_SCRIPT = AppScripts.TRANSPORT_SCRIPT
 
 _TRANSPORT_KIND_LABELS = {
     'usb': 'USB',
@@ -337,11 +340,30 @@ class DeviceInfoBar(QWidget):
         self._start_transport_query()
 
     def _start_transport_query(self):
-        if self._transport_worker and self._transport_worker.isRunning():
-            return
+        if self._transport_worker is not None:
+            if self._transport_worker.isRunning():
+                return
+            # Disconnect stale signal before replacing worker
+            try:
+                self._transport_worker.result.disconnect(self._on_transport_result)
+            except (TypeError, RuntimeError):
+                pass
+            self._transport_worker.quit()
+            self._transport_worker.wait()
         self._transport_worker = _TransportWorker(self)
         self._transport_worker.result.connect(self._on_transport_result)
         self._transport_worker.start()
+
+    def hideEvent(self, event):
+        """Stop the transport worker when the widget is hidden to avoid signals into dead objects."""
+        if self._transport_worker is not None and self._transport_worker.isRunning():
+            try:
+                self._transport_worker.result.disconnect(self._on_transport_result)
+            except (TypeError, RuntimeError):
+                pass
+            self._transport_worker.quit()
+            self._transport_worker.wait()
+        super(DeviceInfoBar, self).hideEvent(event)
 
     def _on_transport_result(self, label: str):
         self.channel_label.setText('Канал: ' + label)
@@ -476,7 +498,10 @@ class FileExplorerWidget(QWidget):
     def open(self, index: QModelIndex = ...):
         item = self.model.items[index.row()]
         ext = os.path.splitext(item.name)[1].lower()
-        if not item.isdir and ext in self._VIDEO_EXTENSIONS:
+        # Guard: skip streaming for directories and symlinks-to-directories
+        is_real_file = (not item.isdir and
+                        not (item.type == FileType.LINK and item.link_type == FileType.DIRECTORY))
+        if is_real_file and ext in self._VIDEO_EXTENSIONS:
             # Видео — стримить в IINA вместо выкачки
             self.stream_file()
             return
@@ -596,7 +621,10 @@ class FileExplorerWidget(QWidget):
                 worker.start()
 
     def delete(self):
-        file_names = ', '.join(map(lambda f: f.name, self.files))
+        files = list(self.files) if self.files is not None else []
+        if not files:
+            return
+        file_names = ', '.join(map(lambda f: f.name, files))
         reply = QMessageBox.critical(
             self,
             'Delete',
@@ -605,7 +633,7 @@ class FileExplorerWidget(QWidget):
         )
 
         if reply == QMessageBox.Yes:
-            for file in self.files:
+            for file in files:
                 data, error = FileRepository.delete(file)
                 if data:
                     Global().communicate.notification.emit(
@@ -671,8 +699,23 @@ class FileExplorerWidget(QWidget):
             if not self.file:
                 return
             remote_path = self.file.path
-            stream_script = os.path.expanduser('~/PhoneAsExtStorage/adbfs-rootless/phone-stream.sh')
-            subprocess.Popen(['bash', stream_script, remote_path])
+            stream_script = AppScripts.STREAM_SCRIPT
+            if not os.path.exists(stream_script):
+                Global().communicate.notification.emit(
+                    MessageData(
+                        timeout=10000,
+                        title="Stream error",
+                        body="Stream script not found: %s" % stream_script,
+                        message_type=MessageType.ERROR_MESSAGE,
+                    )
+                )
+                return
+            subprocess.Popen(
+                ['bash', stream_script, remote_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
         except Exception as e:
             print("Stream error: %s" % e, file=sys.stderr)
             Global().communicate.notification.emit(
