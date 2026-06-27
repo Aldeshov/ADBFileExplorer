@@ -183,6 +183,23 @@ class FileRepository:
         return response.OutputData, response.ErrorData
 
     @classmethod
+    def fetch_exif_thumbnail(cls, device_id: str, path: str):
+        """Returns (jpeg_bytes, None) or (None, error_str)"""
+        try:
+            import piexif
+            from app.services.adb import exec_out_head
+            raw = exec_out_head(device_id, path)
+            if not raw:
+                return None, "empty response"
+            exif = piexif.load(raw)
+            thumb = exif.get("thumbnail")
+            if thumb:
+                return thumb, None
+            return None, "no thumbnail in EXIF"
+        except Exception as e:
+            return None, str(e)
+
+    @classmethod
     def upload(cls, progress_callback: callable, source: str) -> (str, str):
         if ADBManager.get_device() and ADBManager.path() and source:
             helper = cls.UpDownHelper(progress_callback)
@@ -192,6 +209,75 @@ class FileRepository:
 
             return "\n".join(helper.messages), response.ErrorData
         return None, None
+
+
+class StorageRepository:
+    """Helpers for device model name, disk usage, and SD card detection."""
+
+    @staticmethod
+    def get_device_model(device_id: str) -> str:
+        """Return ro.product.model, e.g. 'Pixel 6'."""
+        try:
+            response = adb.shell(device_id, [shlex.join(adb.ShellCommand.GETPROP_PRODUCT_MODEL)])
+            if response.IsSuccessful and response.OutputData:
+                return response.OutputData.strip()
+        except Exception:
+            pass
+        return ''
+
+    @staticmethod
+    def get_disk_info(device_id: str, path: str = '/sdcard') -> dict:
+        """Return {'avail_gb': float, 'total_gb': float} for path, or empty dict on failure.
+
+        Tries `df -k <path>` (POSIX, Android busybox) first; the last data line has
+        columns: Filesystem, 1K-blocks, Used, Available, Use%, Mounted-on.
+        Falls back to `df <path>` which may give KB or 512-byte blocks depending on busybox."""
+        for flag in ['-k', '']:
+            try:
+                cmd_parts = ['df'] + ([flag] if flag else []) + [path]
+                response = adb.shell(device_id, [shlex.join(cmd_parts)])
+                if not response.IsSuccessful or not response.OutputData:
+                    continue
+                lines = [l.strip() for l in response.OutputData.splitlines() if l.strip()]
+                # skip header, take last data line (handles line-wrapped output)
+                data_lines = [l for l in lines if not l.startswith('Filesystem')]
+                if not data_lines:
+                    continue
+                parts = data_lines[-1].split()
+                # expect at least 4 numeric columns after filesystem name
+                # handle wrapped: if first line ends with fs name only, parts may be short
+                if len(parts) < 4:
+                    continue
+                # columns: [filesystem, total, used, avail, ...]  (1K-blocks with -k)
+                total_kb = int(parts[1])
+                avail_kb = int(parts[3])
+                if flag == '-k' or total_kb > 1024 * 1024:
+                    # values are in KB
+                    divisor = 1024 * 1024
+                else:
+                    # values are in 512-byte blocks (some old busybox without -k)
+                    divisor = 2 * 1024 * 1024
+                return {
+                    'avail_gb': round(avail_kb / divisor, 1),
+                    'total_gb': round(total_kb / divisor, 1),
+                }
+            except Exception:
+                continue
+        return {}
+
+    @staticmethod
+    def get_sd_card_path(device_id: str) -> str:
+        """Return /storage/XXXX-XXXX path if external SD card is present, else empty string."""
+        import re
+        try:
+            response = adb.shell(device_id, [shlex.join(['ls', '/storage/'])])
+            if response.IsSuccessful and response.OutputData:
+                for entry in response.OutputData.split():
+                    if re.match(r'^[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}$', entry.strip()):
+                        return '/storage/' + entry.strip()
+        except Exception:
+            pass
+        return ''
 
 
 class DeviceRepository:

@@ -12,7 +12,7 @@ from app.core.configurations import Resources
 from app.core.main import Adb
 from app.core.managers import Global
 from app.data.models import DeviceType, MessageData, MessageType
-from app.data.repositories import DeviceRepository
+from app.data.repositories import DeviceRepository, StorageRepository
 from app.helpers.tools import AsyncRepositoryWorker, read_string_from_file
 from app.gui.widgets.circular_progress import CircularProgress
 
@@ -166,6 +166,16 @@ class DeviceExplorerWidget(QWidget):
         if self.device.id:
             if Adb.manager().set_device(self.device):
                 Global().communicate.files.emit()
+                # Fetch device info in background and broadcast via signal
+                worker = AsyncRepositoryWorker(
+                    name="DeviceInfo",
+                    worker_id=201,
+                    repository_method=self._fetch_device_info,
+                    arguments=(self.device.id,),
+                    response_callback=self._on_device_info
+                )
+                if Adb.worker().work(worker):
+                    worker.start()
             else:
                 Global().communicate.notification.emit(
                     MessageData(
@@ -174,3 +184,19 @@ class DeviceExplorerWidget(QWidget):
                         body="Could not open the device %s" % Adb.manager().get_device().name
                     )
                 )
+
+    @staticmethod
+    def _fetch_device_info(device_id: str):
+        """Called in background thread — returns (model, avail_gb, total_gb, sd_path)."""
+        model = StorageRepository.get_device_model(device_id)
+        disk = StorageRepository.get_disk_info(device_id, '/sdcard')
+        sd = StorageRepository.get_sd_card_path(device_id)
+        avail = disk.get('avail_gb', 0.0)
+        total = disk.get('total_gb', 0.0)
+        return (model, avail, total, sd), None
+
+    @staticmethod
+    def _on_device_info(data, error):
+        if data:
+            model, avail, total, sd = data
+            Global().communicate.device_info_ready.emit(model, float(avail), float(total), sd or '')

@@ -1,12 +1,14 @@
 # ADB File Explorer
 # Copyright (C) 2022  Azat Aldeshov
+import os
 import sys
+import tempfile
 import webbrowser
 from typing import Any
 
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, QPoint, QModelIndex, QAbstractListModel, QVariant, QRect, QSize, QEvent, QObject
-from PyQt5.QtGui import QPixmap, QColor, QPalette, QKeySequence
+from PyQt5.QtCore import Qt, QPoint, QModelIndex, QAbstractListModel, QVariant, QRect, QSize, QEvent, QObject, QUrl, QThreadPool
+from PyQt5.QtGui import QPixmap, QColor, QPalette, QKeySequence, QDesktopServices
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QStyle, QWidget, QStyledItemDelegate, \
     QStyleOptionViewItem, QApplication, QListView, QVBoxLayout, QLabel, QSizePolicy, QHBoxLayout, QTextEdit, \
     QMainWindow
@@ -17,7 +19,7 @@ from app.core.managers import Global, ADBManager
 from app.data.models import FileType, MessageData, MessageType
 from app.data.repositories import FileRepository
 from app.gui.explorer.toolbar import ParentButton, UploadTools, PathBar
-from app.helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper, read_string_from_file
+from app.helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper, read_string_from_file, ThumbnailWorker
 from app.gui.widgets.circular_progress import CircularProgress
 from app.services import stream_server
 
@@ -155,6 +157,9 @@ class FileListModel(QAbstractListModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.items = []
+        self._thumb_cache = {}    # path -> QPixmap
+        self._thumb_pending = set()  # paths currently being fetched
+        Global.communicate.thumbnail_ready.connect(self._on_thumbnail_ready)
 
     def clear(self):
         self.beginResetModel()
@@ -164,8 +169,25 @@ class FileListModel(QAbstractListModel):
     def populate(self, files: list):
         self.beginResetModel()
         self.items.clear()
+        self._thumb_cache.clear()
+        self._thumb_pending.clear()
         self.items = files
         self.endResetModel()
+
+    def _on_thumbnail_ready(self, path: str, jpeg: bytes):
+        pixmap = QPixmap()
+        pixmap.loadFromData(jpeg)
+        if not pixmap.isNull():
+            self._thumb_cache[path] = pixmap.scaled(
+                32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+            self._thumb_pending.discard(path)
+            # Find row and emit dataChanged
+            for row, item in enumerate(self.items):
+                if item.path == path:
+                    idx = self.index(row, 0)
+                    self.dataChanged.emit(idx, idx, [Qt.DecorationRole])
+                    break
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self.items)
@@ -215,8 +237,65 @@ class FileListModel(QAbstractListModel):
         elif role == Qt.EditRole:
             return self.items[index.row()].name
         elif role == Qt.DecorationRole:
+            file = self.items[index.row()]
+            if file.name.lower().endswith(('.jpg', '.jpeg', '.png', '.heic')):
+                if file.path in self._thumb_cache:
+                    return self._thumb_cache[file.path]
+                if file.path not in self._thumb_pending:
+                    device = ADBManager.get_device()
+                    if device:
+                        self._thumb_pending.add(file.path)
+                        mtime_iso = file.raw_date.isoformat() if file.raw_date else ""
+                        worker = ThumbnailWorker(device.id, file.path, mtime_iso)
+                        QThreadPool.globalInstance().start(worker)
             return QPixmap(self.icon_path(index)).scaled(32, 32, Qt.KeepAspectRatio)
         return QVariant()
+
+
+class DeviceInfoBar(QWidget):
+    """Thin bar above file list showing device model, free space, and SD-card shortcut."""
+
+    def __init__(self, parent=None):
+        super(DeviceInfoBar, self).__init__(parent)
+        self._sd_path = ''
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(6, 2, 6, 2)
+
+        self.model_label = QLabel('', self)
+        self.model_label.setStyleSheet('font-weight: bold;')
+        layout.addWidget(self.model_label)
+
+        layout.addStretch(1)
+
+        self.storage_label = QLabel('', self)
+        layout.addWidget(self.storage_label)
+
+        from PyQt5.QtWidgets import QPushButton
+        self.sd_button = QPushButton('SD card', self)
+        self.sd_button.setVisible(False)
+        self.sd_button.setFlat(True)
+        self.sd_button.setStyleSheet('color: #4a90d9; text-decoration: underline; border: none; padding: 0 4px;')
+        self.sd_button.clicked.connect(self._go_sd)
+        layout.addWidget(self.sd_button)
+
+        Global().communicate.device_info_ready.connect(self._update)
+        self.setLayout(layout)
+
+    def _update(self, model: str, avail: float, total: float, sd_path: str):
+        self._sd_path = sd_path
+        self.model_label.setText(model or '')
+        if total > 0:
+            self.storage_label.setText('%.1f GB free / %.1f GB' % (avail, total))
+        else:
+            self.storage_label.setText('')
+        self.sd_button.setVisible(bool(sd_path))
+
+    def _go_sd(self):
+        if not self._sd_path:
+            return
+        file, error = FileRepository.file(self._sd_path)
+        if file and Adb.manager().go(file):
+            Global().communicate.files__refresh.emit()
 
 
 class FileExplorerWidget(QWidget):
@@ -229,6 +308,9 @@ class FileExplorerWidget(QWidget):
 
         self.toolbar = FileExplorerToolbar(self)
         self.main_layout.addWidget(self.toolbar)
+
+        self.device_info_bar = DeviceInfoBar(self)
+        self.main_layout.addWidget(self.device_info_bar)
 
         self.header = FileHeaderWidget(self)
         self.main_layout.addWidget(self.header)
@@ -406,21 +488,44 @@ class FileExplorerWidget(QWidget):
         self.list.edit(self.list.currentIndex())
 
     def open_file(self):
-        # QDesktopServices.openUrl(QUrl.fromLocalFile("downloaded_path")) open via external app
         if not self.file.isdir:
-            data, error = FileRepository.open_file(self.file)
-            if error:
+            temp_dir = os.path.join(tempfile.gettempdir(), 'adbfe_open')
+            os.makedirs(temp_dir, exist_ok=True)
+            local_path = os.path.join(temp_dir, self.file.name)
+
+            def open_response(data, error):
+                if error:
+                    Global().communicate.notification.emit(
+                        MessageData(
+                            title='Open error',
+                            timeout=15000,
+                            body=str(error),
+                            message_type=MessageType.ERROR_MESSAGE,
+                        )
+                    )
+                else:
+                    QDesktopServices.openUrl(QUrl.fromLocalFile(local_path))
+
+            helper = ProgressCallbackHelper()
+            worker = AsyncRepositoryWorker(
+                worker_id=self.DOWNLOAD_WORKER_ID,
+                name="Open",
+                repository_method=FileRepository.download,
+                response_callback=open_response,
+                arguments=(
+                    helper.progress_callback.emit, self.file.path, temp_dir
+                )
+            )
+            if Adb.worker().work(worker):
                 Global().communicate.notification.emit(
                     MessageData(
-                        title='File',
-                        timeout=15000,
-                        body=str(error),
-                        message_type=MessageType.ERROR_MESSAGE,
+                        title="Opening",
+                        message_type=MessageType.LOADING_MESSAGE,
+                        message_catcher=worker.set_loading_widget
                     )
                 )
-            else:
-                self.text_view_window = TextView(self.file.name, data)
-                self.text_view_window.show()
+                helper.setup(worker, worker.update_loading_widget)
+                worker.start()
 
     def delete(self):
         file_names = ', '.join(map(lambda f: f.name, self.files))

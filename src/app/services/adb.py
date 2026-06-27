@@ -101,3 +101,16 @@ def file_list(device_id: str, path: str):
 
 def read_file(device_id: str, path: str):
     return CommonProcess([ADB_PATH, Parameter.DEVICE, device_id, ShellCommand.CAT, path])
+
+
+def exec_out_head(device_id: str, path: str, nbytes: int = 131072) -> bytes:
+    """Fetch first nbytes of a remote file via adb exec-out + head. Returns raw bytes."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            [ADB_PATH, Parameter.DEVICE, device_id, 'exec-out', f"head -c {nbytes} '{path}'"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        return result.stdout
+    except Exception:
+        return b''

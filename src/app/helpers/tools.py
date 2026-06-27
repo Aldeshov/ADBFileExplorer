@@ -8,7 +8,7 @@ import subprocess
 import shlex
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QThread, QObject, QFile, QIODevice, QTextStream
+from PyQt5.QtCore import QThread, QObject, QFile, QIODevice, QTextStream, QRunnable
 from PyQt5.QtWidgets import QWidget
 
 from app.data.models import MessageData
@@ -121,6 +121,9 @@ class Communicate(QObject):
 
     status_bar = QtCore.pyqtSignal(str, int)  # Message, Duration
     notification = QtCore.pyqtSignal(MessageData)
+    thumbnail_ready = QtCore.pyqtSignal(str, bytes)  # path, jpeg_bytes
+    # (model_name, avail_gb, total_gb, sd_card_path) — '' / 0.0 if unavailable
+    device_info_ready = QtCore.pyqtSignal(str, float, float, str)
 
 
 class Singleton(type):
@@ -130,6 +133,31 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+class ThumbnailWorker(QRunnable):
+    """Background worker to fetch EXIF thumbnail for a single file."""
+
+    def __init__(self, device_id: str, path: str, mtime_iso: str):
+        super().__init__()
+        self.device_id = device_id
+        self.path = path
+        self.mtime_iso = mtime_iso
+
+    def run(self):
+        from app.helpers import thumb_cache
+        from app.data.repositories.android_adb import FileRepository
+        from app.core.managers import Global
+        # Check disk cache first
+        cached = thumb_cache.get(self.device_id, self.path, self.mtime_iso)
+        if cached:
+            Global.communicate.thumbnail_ready.emit(self.path, cached)
+            return
+        # Fetch from device
+        jpeg, err = FileRepository.fetch_exif_thumbnail(self.device_id, self.path)
+        if jpeg:
+            thumb_cache.put(self.device_id, self.path, self.mtime_iso, jpeg)
+            Global.communicate.thumbnail_ready.emit(self.path, jpeg)
 
 
 # ------------------------------
