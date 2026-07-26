@@ -102,6 +102,8 @@ class AppScripts:
     """Centralised paths for helper shell scripts."""
     STREAM_SCRIPT = _checked_script('phone-stream.sh')
     TRANSPORT_SCRIPT = _checked_script('phone-transport.sh')
+    # общее ядро range-стрима: его же гоняет phone-stream.sh и CLI
+    ADB_STREAM = _checked_script('adb_stream.py')
 
 
 class Resources:

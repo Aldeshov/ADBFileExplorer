@@ -13,6 +13,7 @@ from app.gui.explorer import MainExplorer
 from app.gui.help import About
 from app.gui.notification import NotificationCenter
 from app.helpers.mount import mount_phone, mount_phone_system, unmount_phone
+from app.services import stream_server
 from app.helpers.tools import AsyncRepositoryWorker
 
 
@@ -245,6 +246,13 @@ class MainWindow(QMainWindow):
             data.message_catcher(message)
 
     def closeEvent(self, event):
+        # Закрыть HTTP-серверы стрима: каждая скопированная ссылка держит свой
+        # слушающий сокет, и без этого они жили до конца процесса.
+        try:
+            stream_server.stop_all()
+        except Exception:
+            pass
+
         if Adb.core == Adb.EXTERNAL_TOOL_ADB:
             if Settings.adb_kill_server_at_exit() is None:
                 reply = QMessageBox.question(self, 'ADB Server', "Do you want to kill adb server?",
