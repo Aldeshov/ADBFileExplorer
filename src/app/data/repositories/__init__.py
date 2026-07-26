@@ -79,6 +79,22 @@ class FileRepository:
             )
 
 
+class StorageRepository:
+    """Delegates to android_adb.StorageRepository (only available with EXTERNAL_TOOL_ADB core)."""
+
+    @staticmethod
+    def get_device_model(device_id: str) -> str:
+        return android_adb.StorageRepository.get_device_model(device_id)
+
+    @staticmethod
+    def get_disk_info(device_id: str, path: str = '/sdcard') -> dict:
+        return android_adb.StorageRepository.get_disk_info(device_id, path)
+
+    @staticmethod
+    def get_sd_card_path(device_id: str) -> str:
+        return android_adb.StorageRepository.get_sd_card_path(device_id)
+
+
 class DeviceRepository:
     @classmethod
     def devices(cls) -> (List[Device], str):

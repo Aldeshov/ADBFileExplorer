@@ -8,7 +8,7 @@ import subprocess
 import shlex
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import QThread, QObject, QFile, QIODevice, QTextStream
+from PyQt5.QtCore import QThread, QObject, QFile, QIODevice, QTextStream, QRunnable, QThreadPool
 from PyQt5.QtWidgets import QWidget
 
 from app.data.models import MessageData
@@ -30,12 +30,15 @@ class CommonProcess:
     arguments -- array list of arguments
     stdout -- define stdout (default subprocess.PIPE)
     stdout_callback -- callable function, params: (data: str) -> None (default None)
+    timeout -- subprocess timeout in seconds (default None = no limit, pass int to limit)
     """
 
-    def __init__(self, arguments: list, stdout=subprocess.PIPE, stdout_callback: callable = None):
+    def __init__(self, arguments: list, stdout=subprocess.PIPE, stdout_callback: callable = None,
+                 timeout: int = None):
         self.ErrorData = None
         self.OutputData = None
         self.IsSuccessful = False
+        self.ExitCode = -1
         if arguments:
             try:
                 # Merge stderr into stdout so the callback receives both
@@ -44,7 +47,7 @@ class CommonProcess:
                 if stdout == subprocess.PIPE and stdout_callback:
                     for line in iter(process.stdout.readline, b''):
                         stdout_callback(line.decode(encoding='utf-8'))
-                data, error = process.communicate()
+                data, error = process.communicate(timeout=timeout)
                 self.ExitCode = process.poll()
                 self.IsSuccessful = self.ExitCode == 0
 
@@ -58,6 +61,22 @@ class CommonProcess:
                     self.ErrorData = decoded_error
                     self.OutputData = decoded_data
 
+                # Проверяем признаки отключённого устройства
+                combined = (decoded_data or '') + (decoded_error or '')
+                if any(marker in combined for marker in ('device offline', 'device not found',
+                                                          'no devices/emulators found',
+                                                          'error: no devices')):
+                    self.IsSuccessful = False
+                    self.ErrorData = "Устройство недоступно (offline). Проверь подключение и попробуй снова."
+
+            except subprocess.TimeoutExpired:
+                try:
+                    process.kill()
+                    process.communicate()
+                except Exception:
+                    pass
+                self.ErrorData = "Превышен таймаут (%ds). Папка слишком большая или соединение медленное — попробуй ещё раз или подключись по USB." % timeout
+                self.IsSuccessful = False
             except FileNotFoundError:
                 self.ErrorData = "Command '%s' failed! File (command) '%s' not found!" % \
                                  (' '.join(arguments), arguments[0])
@@ -121,6 +140,9 @@ class Communicate(QObject):
 
     status_bar = QtCore.pyqtSignal(str, int)  # Message, Duration
     notification = QtCore.pyqtSignal(MessageData)
+    thumbnail_ready = QtCore.pyqtSignal(str, bytes)  # path, jpeg_bytes
+    # (model_name, avail_gb, total_gb, sd_card_path) — '' / 0.0 if unavailable
+    device_info_ready = QtCore.pyqtSignal(str, float, float, str)
 
 
 class Singleton(type):
@@ -130,6 +152,55 @@ class Singleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+# Отдельный пул для превью — максимум 2 параллельных adb-вызова
+_thumbnail_pool = QThreadPool()
+_thumbnail_pool.setMaxThreadCount(2)
+
+# Глобальный счётчик «эпохи» — при смене папки инкрементируется,
+# воркеры из старой эпохи тихо отбрасывают результат
+_thumbnail_epoch = 0
+
+
+def thumbnail_cancel_pending():
+    """Вызвать при смене папки/устройства, чтобы отменить устаревшие превью."""
+    global _thumbnail_epoch
+    _thumbnail_epoch += 1
+
+
+class ThumbnailWorker(QRunnable):
+    """Background worker to fetch EXIF thumbnail for a single file."""
+
+    def __init__(self, device_id: str, path: str, mtime_iso: str):
+        super().__init__()
+        self.setAutoDelete(True)
+        self.device_id = device_id
+        self.path = path
+        self.mtime_iso = mtime_iso
+        self._epoch = _thumbnail_epoch  # запоминаем эпоху при создании
+
+    def run(self):
+        # Если эпоха сменилась — папка уже не актуальна, выходим тихо
+        if self._epoch != _thumbnail_epoch:
+            return
+        try:
+            from app.helpers import thumb_cache
+            from app.data.repositories.android_adb import FileRepository
+            from app.core.managers import Global
+            # Check disk cache first
+            cached = thumb_cache.get(self.device_id, self.path, self.mtime_iso)
+            if cached:
+                if self._epoch == _thumbnail_epoch:
+                    Global.communicate.thumbnail_ready.emit(self.path, cached)
+                return
+            # Fetch from device (с таймаутом — в exec_out_head)
+            jpeg, err = FileRepository.fetch_exif_thumbnail(self.device_id, self.path)
+            if jpeg and self._epoch == _thumbnail_epoch:
+                thumb_cache.put(self.device_id, self.path, self.mtime_iso, jpeg)
+                Global.communicate.thumbnail_ready.emit(self.path, jpeg)
+        except Exception:
+            pass  # тихий фолбэк — иконка останется стандартной
 
 
 # ------------------------------

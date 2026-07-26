@@ -54,11 +54,14 @@ class ADBManager:
     def get_device(cls) -> Device:
         return cls.__device
 
+    DEFAULT_PATH = 'sdcard'
+
     @classmethod
     def set_device(cls, device: Device) -> bool:
         if device:
             cls.clear()
             cls.__device = device
+            cls.__path.append(cls.DEFAULT_PATH)
             return True
 
     @classmethod

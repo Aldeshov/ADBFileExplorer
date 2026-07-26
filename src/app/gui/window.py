@@ -1,5 +1,6 @@
 # ADB File Explorer
 # Copyright (C) 2022  Azat Aldeshov
+from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, QAction, qApp, QInputDialog, QMenuBar, QMessageBox
 
@@ -11,7 +12,22 @@ from app.data.repositories import DeviceRepository
 from app.gui.explorer import MainExplorer
 from app.gui.help import About
 from app.gui.notification import NotificationCenter
+from app.helpers.mount import mount_phone, mount_phone_system, unmount_phone
+from app.services import stream_server
 from app.helpers.tools import AsyncRepositoryWorker
+
+
+class MountWorker(QThread):
+    """Фоновый поток для запуска скриптов монтирования без блокировки UI."""
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, fn, parent=None):
+        super().__init__(parent)
+        self._fn = fn
+
+    def run(self):
+        success, message = self._fn()
+        self.finished.emit(success, message)
 
 
 class MenuBar(QMenuBar):
@@ -23,7 +39,28 @@ class MenuBar(QMenuBar):
 
         self.about = About()
         self.file_menu = self.addMenu('&File')
+        self.phone_menu = self.addMenu('&Phone')
         self.help_menu = self.addMenu('&Help')
+
+        # --- Меню Phone ---
+        mount_action = QAction('&Mount Phone', self)
+        mount_action.setShortcut('Alt+M')
+        mount_action.setToolTip('Смонтировать внутреннюю память телефона в ~/Phone')
+        mount_action.triggered.connect(self._do_mount_phone)
+        self.phone_menu.addAction(mount_action)
+
+        mount_system_action = QAction('Mount Phone (&System)', self)
+        mount_system_action.setToolTip('Смонтировать системный раздел в ~/Phone-System')
+        mount_system_action.triggered.connect(self._do_mount_phone_system)
+        self.phone_menu.addAction(mount_system_action)
+
+        unmount_action = QAction('&Unmount Phone', self)
+        unmount_action.setShortcut('Alt+U')
+        unmount_action.setToolTip('Размонтировать телефон')
+        unmount_action.triggered.connect(self._do_unmount_phone)
+        self.phone_menu.addAction(unmount_action)
+
+        self._mount_worker = None  # держим ссылку, чтобы QThread не был собран GC
 
         self.connect_action = QAction(QIcon(Resources.icon_link), '&Connect', self)
         self.connect_action.setShortcut('Alt+C')
@@ -48,6 +85,36 @@ class MenuBar(QMenuBar):
         about_action = QAction('About', self)
         about_action.triggered.connect(self.about.show)
         self.help_menu.addAction(about_action)
+
+    # --- Phone mount/unmount ---
+
+    def _run_mount_op(self, fn, label: str):
+        """Запускает операцию монтирования в фоновом потоке."""
+        if self._mount_worker and self._mount_worker.isRunning():
+            QMessageBox.information(self.parent(), 'Phone', 'Операция уже выполняется, подождите.')
+            return
+        Global().communicate.status_bar.emit(f'Phone: {label}...', 0)
+        self._mount_worker = MountWorker(fn, parent=self)
+        self._mount_worker.finished.connect(lambda ok, msg: self._on_mount_done(ok, msg, label))
+        self._mount_worker.start()
+
+    def _on_mount_done(self, success: bool, message: str, label: str):
+        Global().communicate.status_bar.emit(f'Phone: {label} завершено.', 5000)
+        if success:
+            Global().communicate.notification.emit(
+                MessageData(title=f'Phone — {label}', body=message or 'Готово', timeout=8000)
+            )
+        else:
+            QMessageBox.warning(self.parent(), f'Phone — {label}', message or 'Неизвестная ошибка')
+
+    def _do_mount_phone(self):
+        self._run_mount_op(mount_phone, 'Mount Phone')
+
+    def _do_mount_phone_system(self):
+        self._run_mount_op(mount_phone_system, 'Mount Phone (System)')
+
+    def _do_unmount_phone(self):
+        self._run_mount_op(unmount_phone, 'Unmount Phone')
 
     def disconnect(self):
         worker = AsyncRepositoryWorker(
@@ -179,6 +246,13 @@ class MainWindow(QMainWindow):
             data.message_catcher(message)
 
     def closeEvent(self, event):
+        # Закрыть HTTP-серверы стрима: каждая скопированная ссылка держит свой
+        # слушающий сокет, и без этого они жили до конца процесса.
+        try:
+            stream_server.stop_all()
+        except Exception:
+            pass
+
         if Adb.core == Adb.EXTERNAL_TOOL_ADB:
             if Settings.adb_kill_server_at_exit() is None:
                 reply = QMessageBox.question(self, 'ADB Server', "Do you want to kill adb server?",

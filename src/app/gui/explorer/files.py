@@ -1,23 +1,29 @@
 # ADB File Explorer
 # Copyright (C) 2022  Azat Aldeshov
+import os
+import subprocess
 import sys
+import tempfile
+import webbrowser
 from typing import Any
 
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt, QPoint, QModelIndex, QAbstractListModel, QVariant, QRect, QSize, QEvent, QObject
-from PyQt5.QtGui import QPixmap, QColor, QPalette, QKeySequence
+from PyQt5.QtCore import Qt, QPoint, QModelIndex, QAbstractListModel, QVariant, QRect, QSize, QEvent, QObject, QUrl, QThreadPool, QThread, pyqtSignal
+from PyQt5.QtGui import QPixmap, QColor, QPalette, QKeySequence, QDesktopServices
 from PyQt5.QtWidgets import QMenu, QAction, QMessageBox, QFileDialog, QStyle, QWidget, QStyledItemDelegate, \
     QStyleOptionViewItem, QApplication, QListView, QVBoxLayout, QLabel, QSizePolicy, QHBoxLayout, QTextEdit, \
     QMainWindow
 
-from app.core.configurations import Resources
+from app.core.configurations import AppScripts, Resources, Settings
 from app.core.main import Adb
-from app.core.managers import Global
+from app.core.managers import Global, ADBManager
 from app.data.models import FileType, MessageData, MessageType
 from app.data.repositories import FileRepository
 from app.gui.explorer.toolbar import ParentButton, UploadTools, PathBar
-from app.helpers.tools import AsyncRepositoryWorker, ProgressCallbackHelper, read_string_from_file
+from app.helpers.tools import (AsyncRepositoryWorker, ProgressCallbackHelper, read_string_from_file,
+                               ThumbnailWorker, thumbnail_cancel_pending, _thumbnail_pool)
 from app.gui.widgets.circular_progress import CircularProgress
+from app.services import stream_server
 
 
 class FileHeaderWidget(QWidget):
@@ -149,10 +155,17 @@ class FileItemDelegate(QStyledItemDelegate):
         )
 
 
+# Не запускать превью если в папке больше N файлов (по Wi-Fi это убийца производительности)
+_THUMB_MAX_FILES = 300
+
 class FileListModel(QAbstractListModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.items = []
+        self._thumb_cache = {}    # path -> QPixmap
+        self._thumb_pending = set()  # paths currently being fetched
+        self._thumbs_enabled = True  # выключается для больших папок
+        Global.communicate.thumbnail_ready.connect(self._on_thumbnail_ready)
 
     def clear(self):
         self.beginResetModel()
@@ -160,10 +173,33 @@ class FileListModel(QAbstractListModel):
         self.endResetModel()
 
     def populate(self, files: list):
+        # Отменяем все старые незавершённые превью
+        thumbnail_cancel_pending()
         self.beginResetModel()
         self.items.clear()
+        self._thumb_cache.clear()
+        self._thumb_pending.clear()
         self.items = files
+        self._thumbs_enabled = len(files) <= _THUMB_MAX_FILES
         self.endResetModel()
+
+    def _on_thumbnail_ready(self, path: str, jpeg: bytes):
+        # Discard stale results after folder change
+        if path not in self._thumb_pending:
+            return
+        pixmap = QPixmap()
+        pixmap.loadFromData(jpeg)
+        if not pixmap.isNull():
+            self._thumb_cache[path] = pixmap.scaled(
+                32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation
+            )
+            self._thumb_pending.discard(path)
+            # Find row and emit dataChanged
+            for row, item in enumerate(self.items):
+                if item.path == path:
+                    idx = self.index(row, 0)
+                    self.dataChanged.emit(idx, idx, [Qt.DecorationRole])
+                    break
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self.items)
@@ -213,8 +249,131 @@ class FileListModel(QAbstractListModel):
         elif role == Qt.EditRole:
             return self.items[index.row()].name
         elif role == Qt.DecorationRole:
+            file = self.items[index.row()]
+            if self._thumbs_enabled and file.name.lower().endswith(('.jpg', '.jpeg', '.png', '.heic')):
+                if file.path in self._thumb_cache:
+                    return self._thumb_cache[file.path]
+                if file.path not in self._thumb_pending:
+                    device = ADBManager.get_device()
+                    if device:
+                        self._thumb_pending.add(file.path)
+                        mtime_iso = file.raw_date.isoformat() if file.raw_date else ""
+                        worker = ThumbnailWorker(device.id, file.path, mtime_iso)
+                        # Используем отдельный пул с лимитом 2 потока вместо globalInstance
+                        _thumbnail_pool.start(worker)
             return QPixmap(self.icon_path(index)).scaled(32, 32, Qt.KeepAspectRatio)
         return QVariant()
+
+
+_TRANSPORT_SCRIPT = AppScripts.TRANSPORT_SCRIPT
+
+_TRANSPORT_KIND_LABELS = {
+    'usb': 'USB',
+    'wifi-ssh': 'Wi-Fi (SSH)',
+    'wifi-adb': 'Wi-Fi (adb)',
+    'none': 'нет связи',
+}
+
+
+class _TransportWorker(QThread):
+    """Фоновый поток: запускает phone-transport.sh и эмитирует человекочитаемый канал."""
+    result = pyqtSignal(str)  # label
+
+    def run(self):
+        try:
+            proc = subprocess.run(
+                ['bash', _TRANSPORT_SCRIPT],
+                capture_output=True, text=True, timeout=6
+            )
+            line = proc.stdout.strip().split('\n')[0]
+            kind = line.split('|')[0] if '|' in line else line
+            label = _TRANSPORT_KIND_LABELS.get(kind, kind or '—')
+        except Exception:
+            label = '—'
+        self.result.emit(label)
+
+
+class DeviceInfoBar(QWidget):
+    """Thin bar above file list showing device model, free space, SD-card shortcut, and transport channel."""
+
+    def __init__(self, parent=None):
+        super(DeviceInfoBar, self).__init__(parent)
+        self._sd_path = ''
+        self._transport_worker = None
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(6, 2, 6, 2)
+
+        self.model_label = QLabel('', self)
+        self.model_label.setStyleSheet('font-weight: bold;')
+        layout.addWidget(self.model_label)
+
+        layout.addStretch(1)
+
+        self.channel_label = QLabel('', self)
+        self.channel_label.setStyleSheet('color: #666;')
+        layout.addWidget(self.channel_label)
+
+        self.storage_label = QLabel('', self)
+        layout.addWidget(self.storage_label)
+
+        from PyQt5.QtWidgets import QPushButton
+        self.sd_button = QPushButton('SD card', self)
+        self.sd_button.setVisible(False)
+        self.sd_button.setFlat(True)
+        self.sd_button.setStyleSheet('color: #4a90d9; text-decoration: underline; border: none; padding: 0 4px;')
+        self.sd_button.clicked.connect(self._go_sd)
+        layout.addWidget(self.sd_button)
+
+        Global().communicate.device_info_ready.connect(self._update)
+        self.setLayout(layout)
+
+    def _update(self, model: str, avail: float, total: float, sd_path: str):
+        self._sd_path = sd_path
+        self.model_label.setText(model or '')
+        if total > 0:
+            self.storage_label.setText('%.1f GB free / %.1f GB' % (avail, total))
+        else:
+            self.storage_label.setText('')
+        self.sd_button.setVisible(bool(sd_path))
+        # Запускаем фоновый запрос канала
+        self.channel_label.setText('Канал: …')
+        self._start_transport_query()
+
+    def _start_transport_query(self):
+        if self._transport_worker is not None:
+            if self._transport_worker.isRunning():
+                return
+            # Disconnect stale signal before replacing worker
+            try:
+                self._transport_worker.result.disconnect(self._on_transport_result)
+            except (TypeError, RuntimeError):
+                pass
+            self._transport_worker.quit()
+            self._transport_worker.wait()
+        self._transport_worker = _TransportWorker(self)
+        self._transport_worker.result.connect(self._on_transport_result)
+        self._transport_worker.start()
+
+    def hideEvent(self, event):
+        """Stop the transport worker when the widget is hidden to avoid signals into dead objects."""
+        if self._transport_worker is not None and self._transport_worker.isRunning():
+            try:
+                self._transport_worker.result.disconnect(self._on_transport_result)
+            except (TypeError, RuntimeError):
+                pass
+            self._transport_worker.quit()
+            self._transport_worker.wait()
+        super(DeviceInfoBar, self).hideEvent(event)
+
+    def _on_transport_result(self, label: str):
+        self.channel_label.setText('Канал: ' + label)
+
+    def _go_sd(self):
+        if not self._sd_path:
+            return
+        file, error = FileRepository.file(self._sd_path)
+        if file and Adb.manager().go(file):
+            Global().communicate.files__refresh.emit()
 
 
 class FileExplorerWidget(QWidget):
@@ -227,6 +386,9 @@ class FileExplorerWidget(QWidget):
 
         self.toolbar = FileExplorerToolbar(self)
         self.main_layout.addWidget(self.toolbar)
+
+        self.device_info_bar = DeviceInfoBar(self)
+        self.main_layout.addWidget(self.device_info_bar)
 
         self.header = FileHeaderWidget(self)
         self.main_layout.addWidget(self.header)
@@ -274,6 +436,8 @@ class FileExplorerWidget(QWidget):
 
     def update(self):
         super(FileExplorerWidget, self).update()
+        # Отменяем устаревшие превью при переходе в другую папку
+        thumbnail_cancel_pending()
         worker = AsyncRepositoryWorker(
             name="Files",
             worker_id=self.FILES_WORKER_ID,
@@ -304,17 +468,21 @@ class FileExplorerWidget(QWidget):
         if error:
             print(error, file=sys.stderr)
             if not files:
+                # Форматируем понятные сообщения для типовых ошибок
+                err_text = str(error)
                 Global().communicate.notification.emit(
                     MessageData(
-                        title='Files',
-                        timeout=15000,
-                        body=str(error),
+                        title='Ошибка загрузки папки',
+                        timeout=20000,
+                        body=err_text,
                         message_type=MessageType.ERROR_MESSAGE,
                     )
                 )
         if not files:
             self.empty_label.setHidden(False)
+            self.list.setHidden(True)
         else:
+            self.empty_label.setHidden(True)
             self.list.setHidden(False)
             self.model.populate(files)
             self.list.setFocus()
@@ -328,7 +496,16 @@ class FileExplorerWidget(QWidget):
         return super(FileExplorerWidget, self).eventFilter(obj, event)
 
     def open(self, index: QModelIndex = ...):
-        if Adb.manager().open(self.model.items[index.row()]):
+        item = self.model.items[index.row()]
+        ext = os.path.splitext(item.name)[1].lower()
+        # Guard: skip streaming for directories and symlinks-to-directories
+        is_real_file = (not item.isdir and
+                        not (item.type == FileType.LINK and item.link_type == FileType.DIRECTORY))
+        if is_real_file and ext in self._VIDEO_EXTENSIONS:
+            # Видео — стримить в IINA вместо выкачки
+            self.stream_file()
+            return
+        if Adb.manager().open(item):
             Global().communicate.files__refresh.emit()
 
     def context_menu(self, pos: QPoint):
@@ -363,6 +540,15 @@ class FileExplorerWidget(QWidget):
         action_download_to.triggered.connect(self.download_to)
         menu.addAction(action_download_to)
 
+        if self.file and not self.file.isdir:
+            action_stream = QAction('Stream', self)
+            action_stream.triggered.connect(self.stream_file)
+            menu.addAction(action_stream)
+
+            action_copy_stream = QAction('Copy stream link', self)
+            action_copy_stream.triggered.connect(self.copy_stream_link)
+            menu.addAction(action_copy_stream)
+
         menu.addSeparator()
 
         action_properties = QAction('Properties', self)
@@ -395,24 +581,50 @@ class FileExplorerWidget(QWidget):
         self.list.edit(self.list.currentIndex())
 
     def open_file(self):
-        # QDesktopServices.openUrl(QUrl.fromLocalFile("downloaded_path")) open via external app
         if not self.file.isdir:
-            data, error = FileRepository.open_file(self.file)
-            if error:
+            temp_dir = os.path.join(tempfile.gettempdir(), 'adbfe_open')
+            os.makedirs(temp_dir, exist_ok=True)
+            local_path = os.path.join(temp_dir, self.file.name)
+
+            def open_response(data, error):
+                if error:
+                    Global().communicate.notification.emit(
+                        MessageData(
+                            title='Open error',
+                            timeout=15000,
+                            body=str(error),
+                            message_type=MessageType.ERROR_MESSAGE,
+                        )
+                    )
+                else:
+                    QDesktopServices.openUrl(QUrl.fromLocalFile(local_path))
+
+            helper = ProgressCallbackHelper()
+            worker = AsyncRepositoryWorker(
+                worker_id=self.DOWNLOAD_WORKER_ID,
+                name="Open",
+                repository_method=FileRepository.download,
+                response_callback=open_response,
+                arguments=(
+                    helper.progress_callback.emit, self.file.path, temp_dir
+                )
+            )
+            if Adb.worker().work(worker):
                 Global().communicate.notification.emit(
                     MessageData(
-                        title='File',
-                        timeout=15000,
-                        body=str(error),
-                        message_type=MessageType.ERROR_MESSAGE,
+                        title="Opening",
+                        message_type=MessageType.LOADING_MESSAGE,
+                        message_catcher=worker.set_loading_widget
                     )
                 )
-            else:
-                self.text_view_window = TextView(self.file.name, data)
-                self.text_view_window.show()
+                helper.setup(worker, worker.update_loading_widget)
+                worker.start()
 
     def delete(self):
-        file_names = ', '.join(map(lambda f: f.name, self.files))
+        files = list(self.files) if self.files is not None else []
+        if not files:
+            return
+        file_names = ', '.join(map(lambda f: f.name, files))
         reply = QMessageBox.critical(
             self,
             'Delete',
@@ -421,7 +633,7 @@ class FileExplorerWidget(QWidget):
         )
 
         if reply == QMessageBox.Yes:
-            for file in self.files:
+            for file in files:
                 data, error = FileRepository.delete(file)
                 if data:
                     Global().communicate.notification.emit(
@@ -469,6 +681,58 @@ class FileExplorerWidget(QWidget):
                 )
                 helper.setup(worker, worker.update_loading_widget)
                 worker.start()
+
+    def _get_stream_url(self):
+        """Start (or reuse) a stream server for the selected file and return the URL."""
+        device = ADBManager.get_device()
+        if not device:
+            raise RuntimeError("No device connected")
+        adb_path = Settings.adb_path()
+        return stream_server.start_stream(adb_path, device.id, self.file.path)
+
+    _VIDEO_EXTENSIONS = {
+        '.mp4', '.mov', '.mkv', '.avi', '.m4v', '.webm', '.3gp', '.ts'
+    }
+
+    def stream_file(self):
+        try:
+            if not self.file:
+                return
+            remote_path = self.file.path
+            stream_script = AppScripts.STREAM_SCRIPT
+            if not os.path.exists(stream_script):
+                Global().communicate.notification.emit(
+                    MessageData(
+                        timeout=10000,
+                        title="Stream error",
+                        body="Stream script not found: %s" % stream_script,
+                        message_type=MessageType.ERROR_MESSAGE,
+                    )
+                )
+                return
+            subprocess.Popen(
+                ['bash', stream_script, remote_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except Exception as e:
+            print("Stream error: %s" % e, file=sys.stderr)
+            Global().communicate.notification.emit(
+                MessageData(
+                    timeout=10000,
+                    title="Stream error",
+                    body=str(e),
+                    message_type=MessageType.ERROR_MESSAGE,
+                )
+            )
+
+    def copy_stream_link(self):
+        try:
+            url = self._get_stream_url()
+            QApplication.clipboard().setText(url)
+        except Exception as e:
+            print("Copy stream link error: %s" % e, file=sys.stderr)
 
     def file_properties(self):
         file, error = FileRepository.file(self.file.path)
